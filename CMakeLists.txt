@@ -8,23 +8,47 @@ project(CVSCommon
   DESCRIPTION "CVS common library (${GIT_DESCRIPTOR})"
   HOMEPAGE_URL ${CVS_HOMEPAGE_URL})
 
-add_library(${PROJECT_NAME} INTERFACE)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Boost REQUIRED)
+
+add_library(${PROJECT_NAME} STATIC)
+add_library(cvs ALIAS ${PROJECT_NAME})
 
 cvs_library_version()
 
+target_sources(${PROJECT_NAME}
+  PRIVATE
+    include/cvs/common/configbase.hpp
+    include/cvs/common/config.hpp
+    include/cvs/common/configutils.hpp
+    include/cvs/common/factory.hpp
+
+    src/config.cpp)
+
+
 target_include_directories(${PROJECT_NAME}
-  INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>)
 
+target_link_libraries(${PROJECT_NAME}
+  Boost::boost)
+
 set(CVSCOMMON_MODULE_PATH ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules)
+
+add_subdirectory(test)
 
 include(cmake/CVSInstall.cmake)
 
 cvs_install(TARGETS_DEV ${PROJECT_NAME}
   FILES_DEV
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cvs/common
-    FILES include/cvs/common/factory.hpp
+    FILES include/cvs/common/configbase.hpp
+          include/cvs/common/config.hpp
+          include/cvs/common/configutils.hpp
+          include/cvs/common/factory.hpp
     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules
     FILES cmake/CVSBuildNumber.cmake
           cmake/CVSGitHelpers.cmake
