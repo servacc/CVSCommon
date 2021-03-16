@@ -1,6 +1,8 @@
 @PACKAGE_INIT@
 include(CMakeFindDependencyMacro)
 
+find_dependency(Boost 1.70)
+
 set(CVSCOMMON_MODULE_PATH @CVSCOMMON_MODULE_PATH@)
 
 include ("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
