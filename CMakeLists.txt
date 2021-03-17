@@ -11,7 +11,8 @@ project(CVSCommon
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Boost REQUIRED)
+message(NOTICE "You should use Boost_DIR if you need to use the CVSCommon package before declaring a project.")
+find_package(Boost 1.70 REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 add_library(cvs ALIAS ${PROJECT_NAME})
