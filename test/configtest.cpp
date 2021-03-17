@@ -153,15 +153,15 @@ DECLARE_CONFIG( LoggerConfig,
   VALUE( name, std::string)
 )
 
-TEST(main_test, additional_test) {
-  std::string additional_test_json =
+TEST(main_test, invalid_object_test) {
+  std::string invalid_object_test_json =
     "{"
       "\"logger\": {"
         "\"name\": \"\""
       "}"
     "}";
 
-  auto config = cvs::common::Config::make(std::move(additional_test_json));
+  auto config = cvs::common::Config::make(std::move(invalid_object_test_json));
   ASSERT_TRUE(config.has_value());
 
   auto result = config->parse<LoggerConfig>();
