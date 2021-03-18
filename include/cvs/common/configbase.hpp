@@ -205,12 +205,11 @@ struct Dummy {
       cvs::common::ConfigStaticValue<type, name##_name, config_value_kind, default_type __VA_OPT__(, __VA_ARGS__)>; \
                                                                                                                     \
  public:                                                                                                            \
-  Config_static_type_##name ::ResultType name##_;                                                                   \
+  Config_static_type_##name ::ResultType name;                                                                      \
   typedef cvs::common::Dummy < Dummy_##name::Parent,                                                                \
       cvs::common::utils::ConcatenateTuples<Dummy_##name::Parsers, std::tuple<Config_static_type_##name>>,          \
       cvs::common::utils::ConcatenateTuples<                                                                        \
-          Dummy_##name::Pointers,                                                                                   \
-          std::tuple<Self::FieldPointer<Config_static_type_##name ::ResultType, &Self::name##_>>>
+          Dummy_##name::Pointers, std::tuple<Self::FieldPointer<Config_static_type_##name ::ResultType, &Self::name>>>
 
 #define SEARCH_IN_GLOBAL true
 

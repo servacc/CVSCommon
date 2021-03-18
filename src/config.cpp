@@ -65,6 +65,17 @@ std::vector<Config> Config::getChildren() const {
   return result;
 }
 
+std::vector<Config> Config::getChildren(std::string_view name) const {
+  std::vector<Config> result;
+
+  for (auto node : tree_) {
+    if (node.first == name)
+      result.emplace_back(node, global_);
+  }
+
+  return result;
+}
+
 std::string_view Config::getName() const { return key_; }
 
 bool Config::has_value() const { return !key_.empty(); }

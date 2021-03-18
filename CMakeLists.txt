@@ -10,6 +10,7 @@ project(CVSCommon
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 message(NOTICE "You should use Boost_DIR if you need to use the CVSCommon package before declaring a project.")
 find_package(Boost 1.70 REQUIRED)
