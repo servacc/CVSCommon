@@ -6,13 +6,34 @@
 
 namespace cvs::common {
 
-std::optional<Config> Config::make(const std::string &file_name) {
+std::optional<Config> Config::makeFromFile(const std::string &file_name) {
   boost::property_tree::ptree root;
   try {
     boost::property_tree::read_json(file_name, root);
   }
   catch (const std::runtime_error &error) {
     // TODO: logs
+    return std::nullopt;
+  }
+
+  return Config(root);
+}
+
+std::optional<Config> Config::make(std::string &&file_content) {
+  std::stringstream ss;
+  ss << file_content;
+  boost::property_tree::ptree root;
+
+  try {
+    boost::property_tree::read_json(ss, root);
+  }
+  catch (const boost::property_tree::json_parser::json_parser_error& exception) {
+    return std::nullopt;
+  }
+  catch (const std::exception& exception) {
+    return std::nullopt;
+  }
+  catch (...) {
     return std::nullopt;
   }
 

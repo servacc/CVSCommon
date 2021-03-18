@@ -148,3 +148,22 @@ TEST(main_test, module_config_test) {
   ASSERT_TRUE(test_module_result->optional_.has_value()) << "required->optional parse failed";
   EXPECT_EQ(test_module_result->optional_.value().distance_, global_distance) << "global_distance parse failed";
 }
+
+DECLARE_CONFIG( LoggerConfig,
+  VALUE( name, std::string)
+)
+
+TEST(main_test, invalid_object_test) {
+  std::string invalid_object_test_json =
+    "{"
+      "\"logger\": {"
+        "\"name\": \"\""
+      "}"
+    "}";
+
+  auto config = cvs::common::Config::make(std::move(invalid_object_test_json));
+  ASSERT_TRUE(config.has_value());
+
+  auto result = config->parse<LoggerConfig>();
+  ASSERT_FALSE(result.has_value());
+}

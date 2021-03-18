@@ -89,7 +89,11 @@ struct ConfigStaticObject {
     if ((std::get<indexes>(result).has_value() && ...)) {
       return std::make_optional(std::make_tuple(utils::toOptionalKind(std::get<indexes>(result)).value()...));
     } else {
-      return ResultIntermediateType<Types, indexes...>{};
+      if constexpr (is_optional) {
+        return std::make_optional<ResultIntermediateType<Types, indexes...> >(std::nullopt);
+      } else {
+        return std::nullopt;
+      }
     }
   }
 
