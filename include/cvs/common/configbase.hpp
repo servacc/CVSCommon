@@ -90,7 +90,7 @@ struct ConfigStaticObject {
       return std::make_optional(std::make_tuple(utils::toOptionalKind(std::get<indexes>(result)).value()...));
     } else {
       if constexpr (is_optional) {
-        return std::make_optional<ResultIntermediateType<Types, indexes...> >(std::nullopt);
+        return std::make_optional<ResultIntermediateType<Types, indexes...>>(std::nullopt);
       } else {
         return std::nullopt;
       }
@@ -255,7 +255,7 @@ struct Dummy {
   };                                                                                                                \
                                                                                                                     \
  public:                                                                                                            \
-  cvs::common::utils::OptionalWrapper<object_name##_type, is_optional> object_name##_;                              \
+  cvs::common::utils::OptionalWrapper<object_name##_type, is_optional> object_name;                                 \
                                                                                                                     \
  protected:                                                                                                         \
   typedef cvs::common::Dummy < Self,                                                                                \
@@ -263,7 +263,7 @@ struct Dummy {
       cvs::common::utils::ConcatenateTuples<                                                                        \
           Dummy_##object_name::Pointers,                                                                            \
           std::tuple<Self::FieldPointer<cvs::common::utils::OptionalWrapper<object_name##_type, is_optional>,       \
-                                        &Self::object_name##_>>>
+                                        &Self::object_name>>>
 
 #define OBJECT_OPTIONAL(object_name, ...) HELPER_OBJECT_BASE(object_name, true, __VA_ARGS__)
 #define OBJECT(object_name, ...)          HELPER_OBJECT_BASE(object_name, false, __VA_ARGS__)

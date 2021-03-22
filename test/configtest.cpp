@@ -67,11 +67,11 @@ TEST(main_test, parsing_test) {
   auto test_result = ParsingTestConfig::make(root);
 
   ASSERT_TRUE(test_result.has_value()) << "Parsing failed";
-  EXPECT_EQ(test_result->required_.inner_.value, kTestJsonRequiredInnerValue) << "required->inner->value parse failed";
-  EXPECT_EQ(test_result->required_.inner_.hash, kTestJsonRequiredInnerHash) << "required->inner->hash parse failed";
-  EXPECT_EQ(test_result->required_.distance, kTestJsonRequiredDistance) << "required->distance parse failed";
-  EXPECT_EQ(test_result->required_.call, std::nullopt) << "required->call parse failed";
-  EXPECT_EQ(test_result->optional_, std::nullopt) << "required->optional parse failed";
+  EXPECT_EQ(test_result->required.inner.value, kTestJsonRequiredInnerValue) << "required->inner->value parse failed";
+  EXPECT_EQ(test_result->required.inner.hash, kTestJsonRequiredInnerHash) << "required->inner->hash parse failed";
+  EXPECT_EQ(test_result->required.distance, kTestJsonRequiredDistance) << "required->distance parse failed";
+  EXPECT_EQ(test_result->required.call, std::nullopt) << "required->call parse failed";
+  EXPECT_EQ(test_result->optional, std::nullopt) << "required->optional parse failed";
   EXPECT_EQ(test_result->length, kTestJsonLength) << "required->length parse failed";
   EXPECT_EQ(test_result->value, kTestJsonValue) << "required->value parse failed";
   EXPECT_EQ(test_result->global, std::nullopt) << "required->global parse failed";
@@ -145,21 +145,19 @@ TEST(main_test, module_config_test) {
 
   auto test_module_result = test_module.parse<ParsingTestConfig>();
   ASSERT_TRUE(test_module_result.has_value()) << "Test module parsing failed";
-  ASSERT_TRUE(test_module_result->optional_.has_value()) << "required->optional parse failed";
-  EXPECT_EQ(test_module_result->optional_.value().distance, global_distance) << "global_distance parse failed";
+  ASSERT_TRUE(test_module_result->optional.has_value()) << "required->optional parse failed";
+  EXPECT_EQ(test_module_result->optional.value().distance, global_distance) << "global_distance parse failed";
 }
 
-DECLARE_CONFIG( LoggerConfig,
-  VALUE( name, std::string)
-)
+DECLARE_CONFIG(LoggerConfig, VALUE(name, std::string))
 
 TEST(main_test, invalid_object_test) {
   std::string invalid_object_test_json =
-    "{"
+      "{"
       "\"logger\": {"
-        "\"name\": \"\""
+      "\"name\": \"\""
       "}"
-    "}";
+      "}";
 
   auto config = cvs::common::Config::make(std::move(invalid_object_test_json));
   ASSERT_TRUE(config.has_value());
