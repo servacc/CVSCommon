@@ -196,7 +196,7 @@ struct Dummy {
 
 }  // namespace cvs::common
 
-#define CVS_CFG_HELPER_VALUE_BASE(name, type, config_value_kind, default_declaration, default_type, ...)            \
+#define CVSCFG_HELPER_VALUE_BASE(name, type, config_value_kind, default_declaration, default_type, ...)             \
   0 > Dummy_##name;                                                                                                 \
                                                                                                                     \
  protected:                                                                                                         \
@@ -211,21 +211,21 @@ struct Dummy {
       cvs::common::utils::ConcatenateTuples<                                                                        \
           Dummy_##name::Pointers, std::tuple<Self::FieldPointer<Config_static_type_##name ::ResultType, &Self::name>>>
 
-#define CVS_CFG_SEARCH_IN_GLOBAL true
+#define CVSCFG_SEARCH_IN_GLOBAL true
 
-#define CVS_CFG_VALUE(name, type, ...) \
-  CVS_CFG_HELPER_VALUE_BASE(name, type, cvs::common::ConfigValueKind::BASE, , void, __VA_OPT__(__VA_ARGS__))
+#define CVSCFG_VALUE(name, type, ...) \
+  CVSCFG_HELPER_VALUE_BASE(name, type, cvs::common::ConfigValueKind::BASE, , void, __VA_OPT__(__VA_ARGS__))
 
-#define CVS_CFG_VALUE_OPTIONAL(name, type, ...) \
-  CVS_CFG_HELPER_VALUE_BASE(name, type, cvs::common::ConfigValueKind::OPTIONAL, , void, __VA_OPT__(__VA_ARGS__))
+#define CVSCFG_VALUE_OPTIONAL(name, type, ...) \
+  CVSCFG_HELPER_VALUE_BASE(name, type, cvs::common::ConfigValueKind::OPTIONAL, , void, __VA_OPT__(__VA_ARGS__))
 
-#define CVS_CFG_VALUE_DEFAULT(name, type, default_value, ...)                            \
-  CVS_CFG_HELPER_VALUE_BASE(                                                             \
+#define CVSCFG_VALUE_DEFAULT(name, type, default_value, ...)                             \
+  CVSCFG_HELPER_VALUE_BASE(                                                              \
       name, type, cvs::common::ConfigValueKind::WITH_DEFAULT_VALUE,                      \
       struct Default_value_##name_type { static constexpr auto value = default_value; }; \
       , Default_value_##name_type, __VA_OPT__(__VA_ARGS__))
 
-#define CVS_CFG_HELPER_OBJECT_MAIN_PART(name, type_suffix, is_name_string_empty, is_optional, ...)         \
+#define CVSCFG_HELPER_OBJECT_MAIN_PART(name, type_suffix, is_name_string_empty, is_optional, ...)          \
   __VA_OPT__(                                                                                              \
       friend Dummy_##name ::Parent; friend cvs::common::ConfigBase; protected                              \
       :                                                                                                    \
@@ -246,12 +246,12 @@ struct Dummy {
       explicit name##type_suffix(                                                                          \
           Tuple arguments) { cvs::common::ConfigBase::makeFromTuple<Pointers>(*this, arguments); })
 
-#define CVS_CFG_HELPER_OBJECT_BASE(object_name, is_optional, ...)                                                   \
+#define CVSCFG_HELPER_OBJECT_BASE(object_name, is_optional, ...)                                                    \
   0 > Dummy_##object_name;                                                                                          \
                                                                                                                     \
  protected:                                                                                                         \
   struct object_name##_type {                                                                                       \
-    CVS_CFG_HELPER_OBJECT_MAIN_PART(object_name, _type, false, is_optional, __VA_ARGS__)                            \
+    CVSCFG_HELPER_OBJECT_MAIN_PART(object_name, _type, false, is_optional, __VA_ARGS__)                             \
   };                                                                                                                \
                                                                                                                     \
  public:                                                                                                            \
@@ -265,13 +265,13 @@ struct Dummy {
           std::tuple<Self::FieldPointer<cvs::common::utils::OptionalWrapper<object_name##_type, is_optional>,       \
                                         &Self::object_name>>>
 
-#define CVS_CFG_OBJECT_OPTIONAL(object_name, ...) CVS_CFG_HELPER_OBJECT_BASE(object_name, true, __VA_ARGS__)
-#define CVS_CFG_OBJECT(object_name, ...)          CVS_CFG_HELPER_OBJECT_BASE(object_name, false, __VA_ARGS__)
+#define CVSCFG_OBJECT_OPTIONAL(object_name, ...) CVSCFG_HELPER_OBJECT_BASE(object_name, true, __VA_ARGS__)
+#define CVSCFG_OBJECT(object_name, ...)          CVSCFG_HELPER_OBJECT_BASE(object_name, false, __VA_ARGS__)
 
-#define CVS_CFG_DECLARE_CONFIG(name, ...)                                                                 \
+#define CVSCFG_DECLARE_CONFIG(name, ...)                                                                  \
   class name {                                                                                            \
     using Dummy_##name = cvs::common::Dummy<name, void, void, 0>;                                         \
-    CVS_CFG_HELPER_OBJECT_MAIN_PART(name, , true, false, __VA_ARGS__)                                     \
+    CVSCFG_HELPER_OBJECT_MAIN_PART(name, , true, false, __VA_ARGS__)                                      \
    public:                                                                                                \
     static std::optional<name> make(                                                                      \
         const boost::property_tree::ptree&                                       source,                  \
