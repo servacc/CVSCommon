@@ -5,7 +5,8 @@ include(cmake/CVSCommon.cmake)
 project(CVSCommon
   VERSION 0.1.0
   DESCRIPTION "CVS common library (${GIT_DESCRIPTOR})"
-  HOMEPAGE_URL ${CVS_HOMEPAGE_URL})
+  HOMEPAGE_URL ${CVS_HOMEPAGE_URL}
+  LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -13,8 +14,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-message(NOTICE "You should use Boost_DIR if you need to use the CVSCommon package before declaring a project.")
-find_package(Boost 1.70 REQUIRED)
+find_package(Boost REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 add_library(cvs ALIAS ${PROJECT_NAME})
@@ -51,7 +51,11 @@ cvs_install(TARGETS_DEV ${PROJECT_NAME}
     FILES include/cvs/common/configbase.hpp
           include/cvs/common/config.hpp
           include/cvs/common/configutils.hpp
-          include/cvs/common/factory.hpp
+          include/cvs/common/factory.hpp)
+
+cvs_install(NAME ${PROJECT_NAME}CMakeHelpers
+  CONFIG install/CVSCommonCMakeHelpersConfig.cmake.in
+  FILES_DEV
     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules
     FILES cmake/CVSBuildNumber.cmake
           cmake/CVSGitHelpers.cmake

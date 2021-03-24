@@ -1,9 +1,7 @@
 @PACKAGE_INIT@
+
 include(CMakeFindDependencyMacro)
 
-message(NOTICE "You should use Boost_DIR if you need to use the CVSCommon package before declaring a project.")
-find_dependency(Boost 1.70)
-
-set(CVSCOMMON_MODULE_PATH @CVSCOMMON_MODULE_PATH@)
+find_dependency(Boost)
 
 include ("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")

@@ -65,7 +65,10 @@ macro(cvs_install)
     endwhile()
   endforeach()
 
+  set(CVS_TARGETS OFF)
+
   if(CVSINSTALL_TARGETS_BIN)
+    set(CVS_TARGETS ON)
     install(TARGETS ${CVSINSTALL_TARGETS_BIN}
       EXPORT  ${CVSINSTALL_NAME}Targets
       RUNTIME
@@ -80,6 +83,7 @@ macro(cvs_install)
   endif()
 
   if(CVSINSTALL_TARGETS_DEV)
+    set(CVS_TARGETS ON)
     install(TARGETS ${CVSINSTALL_TARGETS_DEV}
       EXPORT  ${CVSINSTALL_NAME}Targets
       RUNTIME
@@ -94,11 +98,13 @@ macro(cvs_install)
   endif()
 
   if(CVSINSTALL_ENABLE_DEV)
-    install(EXPORT ${CVSINSTALL_NAME}Targets
-      FILE         ${CVSINSTALL_NAME}Targets.cmake
-      NAMESPACE    cvs::
-      DESTINATION  ${CMAKE_INSTALL_LIBDIR}/cmake/${CVSINSTALL_NAME}
-      COMPONENT    dev)
+    if(CVS_TARGETS)
+      install(EXPORT ${CVSINSTALL_NAME}Targets
+        FILE         ${CVSINSTALL_NAME}Targets.cmake
+        NAMESPACE    cvs::
+        DESTINATION  ${CMAKE_INSTALL_LIBDIR}/cmake/${CVSINSTALL_NAME}
+        COMPONENT    dev)
+    endif()
 
     configure_package_config_file(${CVSINSTALL_CONFIG}
       ${CMAKE_CURRENT_BINARY_DIR}/cvsinstall/${CVSINSTALL_NAME}Config.cmake
