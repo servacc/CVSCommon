@@ -31,20 +31,22 @@ const std::string kParsingTestJson =
     "}";
 // clang-format on
 
-DECLARE_CONFIG(ParsingTestConfig,
-               OBJECT(required,
-                      VALUE(distance, std::remove_cv<decltype(kTestJsonRequiredDistance)>::type),
-                      VALUE_OPTIONAL(call, std::string),
-                      OBJECT(inner,
-                             VALUE(value, std::remove_cv<decltype(kTestJsonRequiredInnerValue)>::type),
-                             VALUE(hash, std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type))),
-               OBJECT_OPTIONAL(optional,
-                               VALUE(distance, double, SEARCH_IN_GLOBAL),
-                               VALUE_OPTIONAL(hash,
-                                              std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type)),
-               VALUE_DEFAULT(length, std::remove_cv<decltype(kTestJsonLength)>::type, kTestJsonLength),
-               VALUE(value, std::remove_cv<decltype(kTestJsonValue)>::type),
-               VALUE_OPTIONAL(global, cvs::common::Config))
+CVS_CFG_DECLARE_CONFIG(
+    ParsingTestConfig,
+    CVS_CFG_OBJECT(
+        required,
+        CVS_CFG_VALUE(distance, std::remove_cv<decltype(kTestJsonRequiredDistance)>::type),
+        CVS_CFG_VALUE_OPTIONAL(call, std::string),
+        CVS_CFG_OBJECT(inner,
+                       CVS_CFG_VALUE(value, std::remove_cv<decltype(kTestJsonRequiredInnerValue)>::type),
+                       CVS_CFG_VALUE(hash, std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type))),
+    CVS_CFG_OBJECT_OPTIONAL(
+        optional,
+        CVS_CFG_VALUE(distance, double, CVS_CFG_SEARCH_IN_GLOBAL),
+        CVS_CFG_VALUE_OPTIONAL(hash, std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type)),
+    CVS_CFG_VALUE_DEFAULT(length, std::remove_cv<decltype(kTestJsonLength)>::type, kTestJsonLength),
+    CVS_CFG_VALUE(value, std::remove_cv<decltype(kTestJsonValue)>::type),
+    CVS_CFG_VALUE_OPTIONAL(global, cvs::common::Config))
 
 TEST(main_test, parsing_test) {
   std::stringstream ss;
@@ -149,7 +151,7 @@ TEST(main_test, module_config_test) {
   EXPECT_EQ(test_module_result->optional.value().distance, global_distance) << "global_distance parse failed";
 }
 
-DECLARE_CONFIG(LoggerConfig, VALUE(name, std::string))
+CVS_CFG_DECLARE_CONFIG(LoggerConfig, CVS_CFG_VALUE(name, std::string))
 
 TEST(main_test, invalid_object_test) {
   std::string invalid_object_test_json =

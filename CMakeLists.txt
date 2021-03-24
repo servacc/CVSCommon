@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
-include(GNUInstallDirs)
 include(cmake/CVSCommon.cmake)
 
 project(CVSCommon
   VERSION 0.1.0
   DESCRIPTION "CVS common library (${GIT_DESCRIPTOR})"
   HOMEPAGE_URL ${CVS_HOMEPAGE_URL})
+
+include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
