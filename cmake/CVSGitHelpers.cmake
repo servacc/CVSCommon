@@ -1,18 +1,27 @@
+find_package(Git)
+
 macro(cvs_git_description DESCRIPTOR TAG COUNT)
-    find_package(Git)
-    execute_process(
-            COMMAND ${GIT_EXECUTABLE} describe
-            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-            OUTPUT_VARIABLE ${DESCRIPTOR}
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(
-            COMMAND ${GIT_EXECUTABLE} describe --abbrev=0
-            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-            OUTPUT_VARIABLE ${TAG}
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(
-            COMMAND ${GIT_EXECUTABLE} rev-list ${GIT_TAG}..HEAD --count
-            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-            OUTPUT_VARIABLE ${COUNT}
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    OUTPUT_VARIABLE ${DESCRIPTOR}
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --abbrev=0
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    OUTPUT_VARIABLE ${TAG}
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-list ${GIT_TAG}..HEAD --count
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    OUTPUT_VARIABLE ${COUNT}
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endmacro()
+
+macro(cvs_git_current_hash HASH)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    OUTPUT_VARIABLE ${HASH}
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 endmacro()

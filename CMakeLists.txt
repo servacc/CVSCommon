@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
-include(cmake/CVSCommon.cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-project(CVSCommon
-  VERSION 0.1.0
-  DESCRIPTION "CVS common library (${GIT_DESCRIPTOR})"
-  HOMEPAGE_URL ${CVS_HOMEPAGE_URL}
-  LANGUAGES CXX)
+include(CVSCommon)
+
+project(CVSCommon CVS_PROJECT
+                  VERSION 0.1.0
+                  DESCRIPTION "CVS common library"
+                  LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -17,9 +18,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(Boost REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
-add_library(cvs ALIAS ${PROJECT_NAME})
 
-cvs_library_version()
+cvs_add_to_alias(${PROJECT_NAME})
+cvs_library_version(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
   PRIVATE
@@ -57,8 +58,7 @@ cvs_install(NAME ${PROJECT_NAME}CMakeHelpers
   CONFIG install/CVSCommonCMakeHelpersConfig.cmake.in
   FILES_DEV
     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules
-    FILES cmake/CVSBuildNumber.cmake
-          cmake/CVSGitHelpers.cmake
+    FILES cmake/CVSGitHelpers.cmake
           cmake/CVSInstall.cmake
           cmake/CVSCommon.cmake)
 
