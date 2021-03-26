@@ -11,6 +11,15 @@ macro(cvs_add_to_alias)
   add_library(${CVS_ALIAS_NAME}::${ARGV} ALIAS ${ARGV})
 endmacro()
 
+function(cvs_create_version_file)
+  set(options)
+  set(oneValueArgs NAME MAJOR MINOR PATCH OUTPUT)
+  set(multiValueArgs)
+  cmake_parse_arguments(CVSVERSION "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/templates/version.hpp.in" "${CVSVERSION_OUTPUT}/version.hpp" @ONLY)
+endfunction()
+
 macro(cvs_library_version)
   set(options)
   set(oneValueArgs TARGET VERSION_MAJOR VERSION_MINOR)

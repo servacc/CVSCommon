@@ -22,6 +22,12 @@ add_library(${PROJECT_NAME} STATIC)
 cvs_add_to_alias(${PROJECT_NAME})
 cvs_library_version(${PROJECT_NAME})
 
+cvs_create_version_file(NAME ${PROJECT_NAME}
+                        MAJOR ${PROJECT_VERSION_MAJOR}
+                        MINOR ${PROJECT_VERSION_MINOR}
+                        PATCH ${PROJECT_VERSION_PATCH}
+                        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generate/cvs/common")
+
 target_sources(${PROJECT_NAME}
   PRIVATE
     include/cvs/common/configbase.hpp
@@ -35,6 +41,7 @@ target_sources(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generate>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>)
 
 target_link_libraries(${PROJECT_NAME}
@@ -52,7 +59,8 @@ cvs_install(TARGETS_DEV ${PROJECT_NAME}
     FILES include/cvs/common/configbase.hpp
           include/cvs/common/config.hpp
           include/cvs/common/configutils.hpp
-          include/cvs/common/factory.hpp)
+          include/cvs/common/factory.hpp
+          ${CMAKE_CURRENT_BINARY_DIR}/generate/cvs/common/version.hpp)
 
 cvs_install(NAME ${PROJECT_NAME}CMakeHelpers
   CONFIG install/CVSCommonCMakeHelpersConfig.cmake.in
@@ -60,6 +68,8 @@ cvs_install(NAME ${PROJECT_NAME}CMakeHelpers
     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules
     FILES cmake/CVSGitHelpers.cmake
           cmake/CVSInstall.cmake
-          cmake/CVSCommon.cmake)
+          cmake/CVSCommon.cmake
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules/templates
+    FILES cmake/templates/version.hpp.in)
 
 cvs_package()
