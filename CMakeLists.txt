@@ -10,6 +10,9 @@ project(CVSCommon CVS_PROJECT
                   LANGUAGES CXX)
 
 include(GNUInstallDirs)
+include(GenerateExportHeader)
+
+string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,11 +31,16 @@ cvs_create_version_file(NAME ${PROJECT_NAME}
                         PATCH ${PROJECT_VERSION_PATCH}
                         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generate/cvs/common")
 
+
+generate_export_header(${PROJECT_NAME}
+  EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/common/${PROJECT_NAME_LOWER}export.hpp)
+
 target_sources(${PROJECT_NAME}
   PRIVATE
     include/cvs/common/configbase.hpp
     include/cvs/common/config.hpp
     include/cvs/common/configutils.hpp
+    include/cvs/common/staticfactory.hpp
     include/cvs/common/factory.hpp
 
     src/config.cpp)
@@ -41,6 +49,7 @@ target_sources(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/export>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generate>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>)
 
@@ -59,7 +68,9 @@ cvs_install(TARGETS_DEV ${PROJECT_NAME}
     FILES include/cvs/common/configbase.hpp
           include/cvs/common/config.hpp
           include/cvs/common/configutils.hpp
+          include/cvs/common/staticfactory.hpp
           include/cvs/common/factory.hpp
+          ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/common/${PROJECT_NAME_LOWER}export.hpp
           ${CMAKE_CURRENT_BINARY_DIR}/generate/cvs/common/version.hpp)
 
 cvs_install(NAME ${PROJECT_NAME}CMakeHelpers
