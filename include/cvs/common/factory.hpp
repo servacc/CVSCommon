@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/core/demangle.hpp>
 #include <cvs/common/cvscommonexport.hpp>
 
 #include <functional>
@@ -22,7 +21,7 @@ class CVSCOMMON_EXPORT Factory {
 
   template <typename FactoryFunction, typename ImplType>
   void registrateDefault(const KeyType &key) {
-    factory_functions[key][typeid(typename Helper<FactoryFunction>::TypeID).name()] =
+    factory_functions[key][typeid(FactoryFunction).name()] =
         std::make_shared<Helper<FactoryFunction>>((ImplType *)nullptr);
   }
 
@@ -38,8 +37,7 @@ class CVSCOMMON_EXPORT Factory {
 
   template <typename FactoryFunction>
   void registrate(const KeyType &key, std::function<FactoryFunction> fun) {
-    factory_functions[key][typeid(typename Helper<FactoryFunction>::TypeID).name()] =
-        std::make_shared<Helper<FactoryFunction>>(std::move(fun));
+    factory_functions[key][typeid(FactoryFunction).name()] = std::make_shared<Helper<FactoryFunction>>(std::move(fun));
   }
 
   template <typename FactoryFunction>
@@ -55,8 +53,7 @@ class CVSCOMMON_EXPORT Factory {
   template <typename T, typename... Args>
   std::optional<T> create(const KeyType &key, Args &&... args) {
     if (auto key_iter = factory_functions.find(key); key_iter != factory_functions.end()) {
-      if (auto sig_iter = key_iter->second.find(typeid(typename Helper<T(Args...)>::TypeID).name());
-          sig_iter != key_iter->second.end()) {
+      if (auto sig_iter = key_iter->second.find(typeid(T(Args...)).name()); sig_iter != key_iter->second.end()) {
         auto helper = std::dynamic_pointer_cast<Helper<T(Args...)>>(sig_iter->second);
         if (helper) {
           auto ss = helper->factory_function(std::forward<Args>(args)...);
@@ -70,8 +67,7 @@ class CVSCOMMON_EXPORT Factory {
   template <typename FactoryFunction>
   bool isRegistered(const KeyType &key) {
     if (auto key_iter = factory_functions.find(key); key_iter != factory_functions.end()) {
-      if (auto sig_iter = key_iter->second.find(typeid(typename Helper<FactoryFunction>::TypeID).name());
-          sig_iter != key_iter->second.end())
+      if (auto sig_iter = key_iter->second.find(typeid(FactoryFunction).name()); sig_iter != key_iter->second.end())
         return true;
     }
 
@@ -90,8 +86,6 @@ class CVSCOMMON_EXPORT Factory {
 
   template <typename Res, typename... Args>
   struct Helper<Res(Args...)> : public BaseHelper {
-    using TypeID = std::function<std::remove_cvref_t<Res>(std::remove_cvref_t<Args>...)>;
-
     template <typename Impl>
     Helper(Impl *) {
       factory_function = [](Args... args) -> Res { return std::make_unique<Impl>(args...); };
