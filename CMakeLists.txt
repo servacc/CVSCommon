@@ -35,6 +35,9 @@ cvs_create_version_file(NAME ${PROJECT_NAME}
 generate_export_header(${PROJECT_NAME}
   EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/common/${PROJECT_NAME_LOWER}export.hpp)
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 target_sources(${PROJECT_NAME}
   PRIVATE
     include/cvs/common/configbase.hpp
