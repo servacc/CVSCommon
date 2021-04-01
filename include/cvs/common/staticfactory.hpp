@@ -11,26 +11,26 @@ namespace cvs::common {
 class CVSCOMMON_EXPORT StaticFactory {
  public:
   template <typename FactoryFunction, typename ImplType, typename KeyType>
-  static void registrateDefault(const KeyType &key) {
+  static void registerTypeDefault(const KeyType &key) {
     auto fun = DefaultFactoryFunctionHelper<FactoryFunction>::template createFunction<ImplType>();
-    registrate(key, std::move(fun));
+    registerType(key, std::move(fun));
   }
 
   template <typename FactoryFunction, typename ImplType, typename KeyType>
-  static bool registrateDefaultIf(const KeyType &key) {
+  static bool tryRegisterTypeDefault(const KeyType &key) {
     auto fun = DefaultFactoryFunctionHelper<FactoryFunction>::template createFunction<ImplType>();
-    return registrateIf(key, std::move(fun));
+    return tryRegisterType(key, std::move(fun));
   }
 
   template <typename FactoryFunction, typename KeyType>
-  static void registrate(const KeyType &key, std::function<FactoryFunction> fun) {
+  static void registerType(const KeyType &key, std::function<FactoryFunction> fun) {
     factoryFunctionsMap<KeyType, FactoryFunction>()[key] = std::move(fun);
   }
 
   template <typename FactoryFunction, typename KeyType>
-  static bool registrateIf(const KeyType &key, std::function<FactoryFunction> fun) {
+  static bool tryRegisterType(const KeyType &key, std::function<FactoryFunction> fun) {
     if (!isRegistered<FactoryFunction>(key)) {
-      registrate(key, std::move(fun));
+      registerType(key, std::move(fun));
       return true;
     }
 

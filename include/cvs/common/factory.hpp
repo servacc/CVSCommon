@@ -20,15 +20,15 @@ class CVSCOMMON_EXPORT Factory {
   Factory &operator=(const Factory &) = delete;
 
   template <typename FactoryFunction, typename ImplType>
-  void registrateDefault(const KeyType &key) {
+  void registerTypeDefault(const KeyType &key) {
     factory_functions[key][typeid(FactoryFunction).name()] =
         std::make_shared<Helper<FactoryFunction>>((ImplType *)nullptr);
   }
 
   template <typename FactoryFunction, typename ImplType>
-  bool registrateDefaultIf(const KeyType &key) {
+  bool tryRegisterTypeDefault(const KeyType &key) {
     if (!isRegistered<FactoryFunction>(key)) {
-      registrateDefault(key);
+      registerTypeDefault(key);
       return true;
     }
 
@@ -36,14 +36,14 @@ class CVSCOMMON_EXPORT Factory {
   }
 
   template <typename FactoryFunction>
-  void registrate(const KeyType &key, std::function<FactoryFunction> fun) {
+  void registerType(const KeyType &key, std::function<FactoryFunction> fun) {
     factory_functions[key][typeid(FactoryFunction).name()] = std::make_shared<Helper<FactoryFunction>>(std::move(fun));
   }
 
   template <typename FactoryFunction>
-  bool registrateIf(const KeyType &key, std::function<FactoryFunction> fun) {
+  bool tryRegisterType(const KeyType &key, std::function<FactoryFunction> fun) {
     if (!isRegistered<FactoryFunction>(key)) {
-      registrate(key, std::move(fun));
+      registerType(key, std::move(fun));
       return true;
     }
 
@@ -54,11 +54,8 @@ class CVSCOMMON_EXPORT Factory {
   std::optional<T> create(const KeyType &key, Args &&... args) {
     if (auto key_iter = factory_functions.find(key); key_iter != factory_functions.end()) {
       if (auto sig_iter = key_iter->second.find(typeid(T(Args...)).name()); sig_iter != key_iter->second.end()) {
-        auto helper = std::dynamic_pointer_cast<Helper<T(Args...)>>(sig_iter->second);
-        if (helper) {
-          auto ss = helper->factory_function(std::forward<Args>(args)...);
-          return std::move(ss);
-        }
+        auto helper = std::static_pointer_cast<Helper<T(Args...)>>(sig_iter->second);
+        return helper->factory_function(std::forward<Args>(args)...);
       }
     }
     return std::nullopt;
@@ -67,7 +64,8 @@ class CVSCOMMON_EXPORT Factory {
   template <typename FactoryFunction>
   bool isRegistered(const KeyType &key) {
     if (auto key_iter = factory_functions.find(key); key_iter != factory_functions.end()) {
-      if (auto sig_iter = key_iter->second.find(typeid(FactoryFunction).name()); sig_iter != key_iter->second.end())
+      if (auto signature_iter = key_iter->second.find(typeid(FactoryFunction).name());
+          signature_iter != key_iter->second.end())
         return true;
     }
 
@@ -75,17 +73,17 @@ class CVSCOMMON_EXPORT Factory {
   }
 
  private:
-  struct BaseHelper {
-    virtual ~BaseHelper() = default;
+  struct HelperBase {
+    virtual ~HelperBase() = default;
   };
 
-  using BaseHelperPtr = std::shared_ptr<BaseHelper>;
+  using HelperBasePtr = std::shared_ptr<HelperBase>;
 
   template <typename FactoryFunction>
   struct Helper;
 
   template <typename Res, typename... Args>
-  struct Helper<Res(Args...)> : public BaseHelper {
+  struct Helper<Res(Args...)> : public HelperBase {
     template <typename Impl>
     Helper(Impl *) {
       factory_function = [](Args... args) -> Res { return std::make_unique<Impl>(args...); };
@@ -100,7 +98,7 @@ class CVSCOMMON_EXPORT Factory {
   template <typename FactoryFunction>
   using HelperPtr = std::shared_ptr<Helper<FactoryFunction>>;
 
-  using Signatures = std::map<std::string, BaseHelperPtr>;
+  using Signatures = std::map<std::string, HelperBasePtr>;
   std::map<KeyType, Signatures, Compare> factory_functions;
 };
 
