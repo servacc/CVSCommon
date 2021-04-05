@@ -29,12 +29,11 @@ class CVSCOMMON_EXPORT StaticFactory {
 
   template <typename FactoryFunction, typename KeyType>
   static bool tryRegisterType(const KeyType &key, std::function<FactoryFunction> fun) {
-    if (!isRegistered<FactoryFunction>(key)) {
-      registerType(key, std::move(fun));
-      return true;
-    }
+    if (isRegistered<FactoryFunction>(key))
+      return false;
 
-    return false;
+    registerType(key, std::move(fun));
+    return true;
   }
 
   template <typename T, typename KeyType, typename... Args>
