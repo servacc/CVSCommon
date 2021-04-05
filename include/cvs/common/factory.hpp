@@ -19,7 +19,7 @@ class CVSCOMMON_EXPORT Factory {
   Factory &operator=(Factory &&) = default;
   Factory &operator=(const Factory &) = delete;
 
-  std::shared_ptr<Factory> defaultInstance() {
+  static std::shared_ptr<Factory> defaultInstance() {
     static auto factory = std::make_shared<Factory>();
     return factory;
   }
@@ -27,7 +27,7 @@ class CVSCOMMON_EXPORT Factory {
   template <typename FactoryFunction, typename ImplType>
   void registerTypeDefault(const KeyType &key) {
     factory_functions[key][typeid(FactoryFunction).name()] =
-        std::make_shared<Helper<FactoryFunction>>((ImplType *)nullptr);
+        std::make_unique<Helper<FactoryFunction>>((ImplType *)nullptr);
   }
 
   template <typename FactoryFunction, typename ImplType>
@@ -41,7 +41,7 @@ class CVSCOMMON_EXPORT Factory {
 
   template <typename FactoryFunction>
   void registerType(const KeyType &key, std::function<FactoryFunction> fun) {
-    factory_functions[key][typeid(FactoryFunction).name()] = std::make_shared<Helper<FactoryFunction>>(std::move(fun));
+    factory_functions[key][typeid(FactoryFunction).name()] = std::make_unique<Helper<FactoryFunction>>(std::move(fun));
   }
 
   template <typename FactoryFunction>
@@ -63,7 +63,7 @@ class CVSCOMMON_EXPORT Factory {
     if (signature_iter == key_iter->second.end())
       return std::nullopt;
 
-    auto helper = std::static_pointer_cast<Helper<T(Args...)>>(signature_iter->second);
+    auto helper = static_cast<Helper<T(Args...)> *>(signature_iter->second.get());
     return helper->factory_function(std::forward<Args>(args)...);
   }
 
@@ -85,7 +85,7 @@ class CVSCOMMON_EXPORT Factory {
     virtual ~HelperBase() = default;
   };
 
-  using HelperBasePtr = std::shared_ptr<HelperBase>;
+  using HelperBaseUPtr = std::unique_ptr<HelperBase>;
 
   template <typename FactoryFunction>
   struct Helper;
@@ -104,9 +104,9 @@ class CVSCOMMON_EXPORT Factory {
   };
 
   template <typename FactoryFunction>
-  using HelperPtr = std::shared_ptr<Helper<FactoryFunction>>;
+  using HelperUPtr = std::unique_ptr<Helper<FactoryFunction>>;
 
-  using Signatures = std::map<std::string, HelperBasePtr>;
+  using Signatures = std::map<std::string, HelperBaseUPtr>;
   std::map<KeyType, Signatures, Compare> factory_functions;
 };  // namespace cvs::common
 
