@@ -54,7 +54,7 @@ class CVSCOMMON_EXPORT Factory {
   }
 
   template <typename T, typename... Args>
-  std::optional<T> create(const KeyType &key, Args &&... args) {
+  std::optional<T> create(const KeyType &key, Args &&... args) const {
     auto key_iter = factory_functions.find(key);
     if (key_iter == factory_functions.end())
       return std::nullopt;
@@ -68,7 +68,7 @@ class CVSCOMMON_EXPORT Factory {
   }
 
   template <typename FactoryFunction>
-  bool isRegistered(const KeyType &key) {
+  bool isRegistered(const KeyType &key) const {
     auto key_iter = factory_functions.find(key);
     if (key_iter == factory_functions.end())
       return false;
