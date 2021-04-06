@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <typeindex>
 
 namespace cvs::common {
 
@@ -26,8 +27,7 @@ class CVSCOMMON_EXPORT Factory {
 
   template <typename FactoryFunction, typename ImplType>
   void registerTypeDefault(const KeyType &key) {
-    factory_functions[key][typeid(FactoryFunction).name()] =
-        std::make_unique<Helper<FactoryFunction>>((ImplType *)nullptr);
+    factory_functions[key][typeid(FactoryFunction)] = std::make_unique<Helper<FactoryFunction>>((ImplType *)nullptr);
   }
 
   template <typename FactoryFunction, typename ImplType>
@@ -41,7 +41,7 @@ class CVSCOMMON_EXPORT Factory {
 
   template <typename FactoryFunction>
   void registerType(const KeyType &key, std::function<FactoryFunction> fun) {
-    factory_functions[key][typeid(FactoryFunction).name()] = std::make_unique<Helper<FactoryFunction>>(std::move(fun));
+    factory_functions[key][typeid(FactoryFunction)] = std::make_unique<Helper<FactoryFunction>>(std::move(fun));
   }
 
   template <typename FactoryFunction>
@@ -59,7 +59,7 @@ class CVSCOMMON_EXPORT Factory {
     if (key_iter == factory_functions.end())
       return std::nullopt;
 
-    auto signature_iter = key_iter->second.find(typeid(T(Args...)).name());
+    auto signature_iter = key_iter->second.find(typeid(T(Args...)));
     if (signature_iter == key_iter->second.end())
       return std::nullopt;
 
@@ -73,7 +73,7 @@ class CVSCOMMON_EXPORT Factory {
     if (key_iter == factory_functions.end())
       return false;
 
-    auto signature_iter = key_iter->second.find(typeid(FactoryFunction).name());
+    auto signature_iter = key_iter->second.find(typeid(FactoryFunction));
     if (signature_iter == key_iter->second.end())
       return false;
 
@@ -106,7 +106,7 @@ class CVSCOMMON_EXPORT Factory {
   template <typename FactoryFunction>
   using HelperUPtr = std::unique_ptr<Helper<FactoryFunction>>;
 
-  using Signatures = std::map<std::string, HelperBaseUPtr>;
+  using Signatures = std::map<std::type_index, HelperBaseUPtr>;
   std::map<KeyType, Signatures, Compare> factory_functions;
 };  // namespace cvs::common
 
