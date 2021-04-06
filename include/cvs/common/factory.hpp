@@ -3,13 +3,13 @@
 #include <cvs/common/cvscommonexport.hpp>
 
 #include <functional>
-#include <map>
 #include <memory>
 #include <typeindex>
+#include <unordered_map>
 
 namespace cvs::common {
 
-template <typename KeyType, class Compare = std::less<KeyType>>
+template <typename KeyType>
 class CVSCOMMON_EXPORT Factory {
  public:
   Factory() = default;
@@ -106,8 +106,8 @@ class CVSCOMMON_EXPORT Factory {
   template <typename FactoryFunction>
   using HelperUPtr = std::unique_ptr<Helper<FactoryFunction>>;
 
-  using Signatures = std::map<std::type_index, HelperBaseUPtr>;
-  std::map<KeyType, Signatures, Compare> factory_functions;
+  using Signatures = std::unordered_map<std::type_index, HelperBaseUPtr>;
+  std::unordered_map<KeyType, Signatures> factory_functions;
 };  // namespace cvs::common
 
 template <typename Key>
