@@ -34,7 +34,7 @@ macro(cvs_library_version)
     message(SEND_ERROR "Target is not set.")
   endif()
 
-  if(NOT CVSVERSION_VERSION_MAJOR)
+  if("${CVSVERSION_VERSION_MAJOR}" STREQUAL "")
     set(CVSVERSION_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
     set(CVSVERSION_VERSION_MINOR ${PROJECT_VERSION_MINOR})
   endif()

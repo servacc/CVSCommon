@@ -35,7 +35,7 @@ class CVSCOMMON_EXPORT Factory {
     if (isRegistered<FactoryFunction>(key))
       return false;
 
-    registerTypeDefault(key);
+    registerTypeDefault<FactoryFunction, ImplType>(key);
     return true;
   }
 
