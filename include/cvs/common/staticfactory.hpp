@@ -39,10 +39,11 @@ class CVSCOMMON_EXPORT StaticFactory {
   template <typename T, typename KeyType, typename... Args>
   static std::optional<T> create(const KeyType &key, Args... args) {
     auto &creator_map = factoryFunctionsMap<KeyType, T(Args...)>();
-    if (auto iter = creator_map.find(key); iter != creator_map.end())
-      return iter->second(std::forward<Args>(args)...);
+    auto  iter        = creator_map.find(key);
+    if (iter == creator_map.end())
+      return {};
 
-    return std::nullopt;
+    return iter->second(std::forward<Args>(args)...);
   }
 
   template <typename FactoryFunction, typename KeyType>
