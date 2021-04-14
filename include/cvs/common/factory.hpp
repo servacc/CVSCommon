@@ -108,7 +108,7 @@ class CVSCOMMON_EXPORT Factory {
 
   using Signatures = std::unordered_map<std::type_index, HelperBaseUPtr>;
   std::unordered_map<KeyType, Signatures> factory_functions;
-};  // namespace cvs::common
+};
 
 template <typename Key>
 using FactoryPtr = std::shared_ptr<Factory<Key>>;
