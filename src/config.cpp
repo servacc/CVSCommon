@@ -78,10 +78,10 @@ std::vector<Config> Config::getChildren(std::string_view name) const {
 
 std::optional<Config> Config::getFirstChild(std::string_view name) const {
   auto children = getChildren(name);
-  if (!children.empty())
-    return children.front();
+  if (children.empty())
+    return std::nullopt;
 
-  return std::nullopt;
+  return children.front();
 }
 
 std::string_view Config::getName() const { return key_; }
