@@ -27,10 +27,10 @@ std::optional<Config> Config::make(std::string &&file_content) {
   try {
     boost::property_tree::read_json(ss, root);
   }
-  catch (const boost::property_tree::json_parser::json_parser_error& exception) {
+  catch (const boost::property_tree::json_parser::json_parser_error &exception) {
     return std::nullopt;
   }
-  catch (const std::exception& exception) {
+  catch (const std::exception &exception) {
     return std::nullopt;
   }
   catch (...) {
@@ -74,6 +74,14 @@ std::vector<Config> Config::getChildren(std::string_view name) const {
   }
 
   return result;
+}
+
+std::optional<Config> Config::getFirstChild(std::string_view name) const {
+  auto children = getChildren(name);
+  if (children.empty())
+    return std::nullopt;
+
+  return children.front();
 }
 
 std::string_view Config::getName() const { return key_; }

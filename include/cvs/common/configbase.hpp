@@ -219,11 +219,11 @@ struct Dummy {
 #define CVSCFG_VALUE_OPTIONAL(name, type, ...) \
   CVSCFG_HELPER_VALUE_BASE(name, type, cvs::common::ConfigValueKind::OPTIONAL, , void, __VA_OPT__(__VA_ARGS__))
 
-#define CVSCFG_VALUE_DEFAULT(name, type, default_value, ...)                             \
-  CVSCFG_HELPER_VALUE_BASE(                                                              \
-      name, type, cvs::common::ConfigValueKind::WITH_DEFAULT_VALUE,                      \
-      struct Default_value_##name_type { static constexpr auto value = default_value; }; \
-      , Default_value_##name_type, __VA_OPT__(__VA_ARGS__))
+#define CVSCFG_VALUE_DEFAULT(name, type, default_value, ...)                               \
+  CVSCFG_HELPER_VALUE_BASE(                                                                \
+      name, type, cvs::common::ConfigValueKind::WITH_DEFAULT_VALUE,                        \
+      struct Default_value_##name##_type { static constexpr auto value = default_value; }; \
+      , Default_value_##name##_type, __VA_OPT__(__VA_ARGS__))
 
 #define CVSCFG_HELPER_OBJECT_MAIN_PART(name, type_suffix, is_name_string_empty, is_optional, ...)          \
   __VA_OPT__(                                                                                              \

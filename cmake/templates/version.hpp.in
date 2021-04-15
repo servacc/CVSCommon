@@ -1,0 +1,7 @@
+#pragma once
+
+static constexpr unsigned int @CVSVERSION_NAME@_VERSION_MAJOR = @CVSVERSION_MAJOR@;
+static constexpr unsigned int @CVSVERSION_NAME@_VERSION_MINOR = @CVSVERSION_MINOR@;
+static constexpr unsigned int @CVSVERSION_NAME@_VERSION_PATCH = @CVSVERSION_PATCH@;
+
+static constexpr const char* @CVSVERSION_NAME@_VERSION = "@CVSVERSION_MAJOR@.@CVSVERSION_MINOR@.@CVSVERSION_PATCH@";
