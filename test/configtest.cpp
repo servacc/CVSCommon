@@ -11,35 +11,36 @@ constexpr double kTestJsonRequiredDistance   = 7.2;
 constexpr float  kTestJsonLength             = 7.2;
 constexpr float  kTestJsonValue              = -0.0001;
 
-// clang-format off
-const std::string kParsingTestJson =
-    "{ \n"
-      "\"moduleName\": \"test_module\", \n"
-      "\"required\": { \n"
-        "\"inner\": { \n"
-          "\"value\": \"" + std::to_string(kTestJsonRequiredInnerValue) + "\",\n"
-          "\"hash\": \"" + std::string(kTestJsonRequiredInnerHash) + "\"\n"
-        "},\n"
-        "\"distance\": \"" + std::to_string(kTestJsonRequiredDistance) + "\"\n"
-//"\"call\": \"Wow\"\n"
-      "}, \n"
-      "\"optional\": {\n"
-        "\"hash\": \"" + std::string(kTestJsonRequiredInnerHash) + "\"\n"
-      "},\n"
-//"\"length\": \"15\", "
-      "\"value\": \"" + std::to_string(kTestJsonValue) + "\"\n"
-    "}";
-// clang-format on
+const std::string kParsingTestJson = R"(
+{
+  "moduleName": "test_module",
+  "required": {
+    "inner":
+      "value": ")" + std::to_string(kTestJsonRequiredInnerValue) +
+                                     R"(",
+      "hash": ")" + std::string(kTestJsonRequiredInnerHash) +
+                                     R"("
+    },
+    "distance": ")" + std::to_string(kTestJsonRequiredDistance) +
+                                     R"("
+  },
+  "optional": {
+    "hash": ")" + std::string(kTestJsonRequiredInnerHash) +
+                                     R"("
+  },
+  "value": ")" + std::to_string(kTestJsonValue) +
+                                     R"("
+})";
 
 CVSCFG_DECLARE_CONFIG(
     ParsingTestConfig,
-    CVSCFG_OBJECT(
-        required,
-        CVSCFG_VALUE(distance, std::remove_cv<decltype(kTestJsonRequiredDistance)>::type),
-        CVSCFG_VALUE_OPTIONAL(call, std::string),
-        CVSCFG_OBJECT(inner,
-                       CVSCFG_VALUE(value, std::remove_cv<decltype(kTestJsonRequiredInnerValue)>::type),
-                       CVSCFG_VALUE(hash, std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type))),
+    CVSCFG_OBJECT(required,
+                  CVSCFG_VALUE(distance, std::remove_cv<decltype(kTestJsonRequiredDistance)>::type),
+                  CVSCFG_VALUE_OPTIONAL(call, std::string),
+                  CVSCFG_OBJECT(inner,
+                                CVSCFG_VALUE(value, std::remove_cv<decltype(kTestJsonRequiredInnerValue)>::type),
+                                CVSCFG_VALUE(hash,
+                                             std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type))),
     CVSCFG_OBJECT_OPTIONAL(
         optional,
         CVSCFG_VALUE(distance, double, CVSCFG_SEARCH_IN_GLOBAL),
