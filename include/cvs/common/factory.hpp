@@ -54,7 +54,7 @@ class CVSCOMMON_EXPORT Factory {
   }
 
   template <typename T, typename... Args>
-  std::optional<T> create(const KeyType &key, Args &&... args) const {
+  std::optional<T> create(const KeyType &key, Args &&...args) const {
     auto key_iter = factory_functions.find(key);
     if (key_iter == factory_functions.end())
       return std::nullopt;
