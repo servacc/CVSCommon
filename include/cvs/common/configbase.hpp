@@ -187,10 +187,8 @@ struct ConfigStaticValue<Config, name, value_type, void, false> {
   }
 };
 
-template <auto& name, ConfigValueKind value_type>
-struct ConfigStaticValue<std::vector<std::string>, name, value_type, void, false> {
-  static_assert(value_type != ConfigValueKind::WITH_DEFAULT_VALUE,
-                "ConfigStaticValue (vector) cannot be of kind DEFAULT");
+template <auto& name, ConfigValueKind value_type, typename DefaultValueType>
+struct ConfigStaticValue<std::vector<std::string>, name, value_type, DefaultValueType, false> {
   using ResultType = utils::OptionalWrapper<std::vector<std::string>, (value_type == ConfigValueKind::OPTIONAL)>;
 
   static std::optional<ResultType> parse(
@@ -203,6 +201,11 @@ struct ConfigStaticValue<std::vector<std::string>, name, value_type, void, false
       for (const auto& item : object.get()) {
         result->push_back(item.second.template get_value<std::string>());
       }
+    } else if constexpr (value_type == ConfigValueKind::WITH_DEFAULT_VALUE) {
+      static_assert(!std::is_same<DefaultValueType, void>::value, "Default_value_type must be provided");
+      static_assert(std::is_convertible<decltype(DefaultValueType::value), std::vector<std::string>>::value,
+                    "Can't convert Default_value_type::value to Config_value_type");
+      result = DefaultValueType::value;
     }
 
     if constexpr (value_type == ConfigValueKind::OPTIONAL) {
