@@ -71,10 +71,10 @@ struct ConfigStaticObject {
  protected:
   template <typename Tuple, size_t... indexes>
   using ResultIntermediateType =
-      utils::OptionalWrapper<decltype(
-                                 std::make_tuple(utils::toOptionalKind(std::tuple_element<indexes, Tuple>::type::parse(
-                                                                           std::declval<boost::property_tree::ptree>()))
-                                                     .value()...)),
+      utils::OptionalWrapper<decltype(std::make_tuple(
+                                 utils::toOptionalKind(std::tuple_element<indexes, Tuple>::type::parse(
+                                                           std::declval<boost::property_tree::ptree>()))
+                                     .value()...)),
                              is_optional>;
 
   template <typename Tuple, size_t... indexes>
@@ -177,6 +177,32 @@ struct ConfigStaticValue<Config, name, value_type, void, false> {
     if (object) {
       // TODO: logs
       result = std::move(Config(object.get(), global, name));
+    }
+
+    if constexpr (value_type == ConfigValueKind::OPTIONAL) {
+      return std::make_optional(std::move(result));
+    } else {
+      return std::move(result);
+    }
+  }
+};
+
+template <auto& name, ConfigValueKind value_type>
+struct ConfigStaticValue<std::vector<std::string>, name, value_type, void, false> {
+  static_assert(value_type != ConfigValueKind::WITH_DEFAULT_VALUE,
+                "ConfigStaticValue (vector) cannot be of kind DEFAULT");
+  using ResultType = utils::OptionalWrapper<std::vector<std::string>, (value_type == ConfigValueKind::OPTIONAL)>;
+
+  static std::optional<ResultType> parse(
+      const boost::property_tree::ptree&                                             source,
+      const std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt) {
+    const auto&                             object = source.get_child_optional(name);
+    std::optional<std::vector<std::string>> result;
+    if (object && !object->empty() && object->data().empty()) {
+      result = std::vector<std::string>();
+      for (const auto& item : object.get()) {
+        result->push_back(item.second.template get_value<std::string>());
+      }
     }
 
     if constexpr (value_type == ConfigValueKind::OPTIONAL) {
