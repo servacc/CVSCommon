@@ -46,7 +46,8 @@ target_sources(${PROJECT_NAME}
     include/cvs/common/staticfactory.hpp
     include/cvs/common/factory.hpp
 
-    src/config.cpp)
+    src/config.cpp
+    src/configbase.cpp)
 
 
 target_include_directories(${PROJECT_NAME}

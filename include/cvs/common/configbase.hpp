@@ -129,14 +129,24 @@ enum class ConfigValueKind {
   WITH_DEFAULT_VALUE,
 };
 
+template <typename Subtype>
+std::optional<Subtype> get_value_from_ptree(const boost::property_tree::ptree& source, const std::string& name) {
+  static_assert(std::is_arithmetic_v<Subtype> || std::is_same_v<Subtype, std::string>,
+                "Subtype must not be a arithmetic type or a std::string");
+  return utils::boostOptionalToStd(source.get_optional<Subtype>(name));
+}
+
+template <>
+std::optional<std::vector<std::string>> get_value_from_ptree<std::vector<std::string>>(
+    const boost::property_tree::ptree& source,
+    const std::string&                 name);
+
 template <typename Subtype,
           auto&           name,
           ConfigValueKind value_type,
           typename DefaultValueType = void,
           bool is_global            = false>
 struct ConfigStaticValue {
-  static_assert(std::is_arithmetic_v<Subtype> || std::is_same_v<Subtype, std::string>,
-                "Subtype must not be a arithmetic type or a std::string");
   static_assert(!std::is_const_v<Subtype> && !std::is_reference_v<Subtype>,
                 "Subtype must not be a constant or a reference");
 
@@ -145,9 +155,9 @@ struct ConfigStaticValue {
   static std::optional<ResultType> parse(
       const boost::property_tree::ptree&                                             source,
       const std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global_source = std::nullopt) {
-    std::optional<Subtype> result = utils::boostOptionalToStd(source.get_optional<Subtype>(name));
+    auto result = get_value_from_ptree<Subtype>(source, name);
     if (!result && global_source && is_global) {
-      result = utils::boostOptionalToStd(global_source.value().get().get_optional<Subtype>(name));
+      result = get_value_from_ptree<Subtype>(global_source.value().get(), name);
     }
 
     if constexpr (value_type == ConfigValueKind::OPTIONAL) {
@@ -177,35 +187,6 @@ struct ConfigStaticValue<Config, name, value_type, void, false> {
     if (object) {
       // TODO: logs
       result = std::move(Config(object.get(), global, name));
-    }
-
-    if constexpr (value_type == ConfigValueKind::OPTIONAL) {
-      return std::make_optional(std::move(result));
-    } else {
-      return std::move(result);
-    }
-  }
-};
-
-template <auto& name, ConfigValueKind value_type, typename DefaultValueType>
-struct ConfigStaticValue<std::vector<std::string>, name, value_type, DefaultValueType, false> {
-  using ResultType = utils::OptionalWrapper<std::vector<std::string>, (value_type == ConfigValueKind::OPTIONAL)>;
-
-  static std::optional<ResultType> parse(
-      const boost::property_tree::ptree&                                             source,
-      const std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt) {
-    const auto&                             object = source.get_child_optional(name);
-    std::optional<std::vector<std::string>> result;
-    if (object && !object->empty() && object->data().empty()) {
-      result = std::vector<std::string>();
-      for (const auto& item : object.get()) {
-        result->push_back(item.second.template get_value<std::string>());
-      }
-    } else if constexpr (value_type == ConfigValueKind::WITH_DEFAULT_VALUE) {
-      static_assert(!std::is_same<DefaultValueType, void>::value, "Default_value_type must be provided");
-      static_assert(std::is_convertible<decltype(DefaultValueType::value), std::vector<std::string>>::value,
-                    "Can't convert Default_value_type::value to Config_value_type");
-      result = DefaultValueType::value;
     }
 
     if constexpr (value_type == ConfigValueKind::OPTIONAL) {
