@@ -5,9 +5,8 @@ namespace cvs::common {
 using VecOfStr = std::vector<std::string>;
 
 template <>
-std::optional<VecOfStr> get_value_from_ptree<VecOfStr>(
-    const boost::property_tree::ptree& source,
-    const std::string&                 name) {
+std::optional<VecOfStr> get_value_from_ptree<VecOfStr>(const boost::property_tree::ptree& source,
+                                                       const std::string&                 name) {
   const auto&             object = source.get_child_optional(name);
   std::optional<VecOfStr> result;
   if (object && !object->empty() && object->data().empty()) {

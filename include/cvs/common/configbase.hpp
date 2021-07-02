@@ -71,10 +71,10 @@ struct ConfigStaticObject {
  protected:
   template <typename Tuple, size_t... indexes>
   using ResultIntermediateType =
-      utils::OptionalWrapper<decltype(std::make_tuple(
-                                 utils::toOptionalKind(std::tuple_element<indexes, Tuple>::type::parse(
-                                                           std::declval<boost::property_tree::ptree>()))
-                                     .value()...)),
+      utils::OptionalWrapper<decltype(
+                                 std::make_tuple(utils::toOptionalKind(std::tuple_element<indexes, Tuple>::type::parse(
+                                                                           std::declval<boost::property_tree::ptree>()))
+                                                     .value()...)),
                              is_optional>;
 
   template <typename Tuple, size_t... indexes>
