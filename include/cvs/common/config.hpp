@@ -23,7 +23,7 @@ class Config {
   static std::optional<Config> makeFromFile(const std::string &file_name);
 
   template <typename Config_parser>
-  auto parse() {
+  auto parse() const {
     return Config_parser::make(tree_, global_);
   }
 

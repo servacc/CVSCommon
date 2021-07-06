@@ -2,6 +2,7 @@
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/lexical_cast.hpp>
 #include <cvs/common/config.hpp>
 #include <cvs/common/configutils.hpp>
 
@@ -131,9 +132,30 @@ enum class ConfigValueKind {
 
 template <typename Subtype>
 std::optional<Subtype> get_value_from_ptree(const boost::property_tree::ptree& source, const std::string& name) {
-  static_assert(std::is_arithmetic_v<Subtype> || std::is_same_v<Subtype, std::string>,
-                "Subtype must not be a arithmetic type or a std::string");
-  return utils::boostOptionalToStd(source.get_optional<Subtype>(name));
+  constexpr bool is_vector_specialization = cvs::common::utils::is_specialization<Subtype, std::vector>::value;
+  static_assert(std::is_arithmetic_v<Subtype> || std::is_same_v<Subtype, std::string> || is_vector_specialization,
+                "Subtype must not be a arithmetic type or a std::string or a vector");
+  if constexpr (!is_vector_specialization) {
+    return utils::boostOptionalToStd(source.get_optional<Subtype>(name));
+  } else {
+    auto strings = get_value_from_ptree<std::vector<std::string>>(source, name);
+    if (!strings) {
+      return std::nullopt;
+    }
+
+    Subtype result(strings->size());
+    for (size_t i = 0; i < result.size(); ++i) {
+      try {
+        result[i] = boost::lexical_cast<std::string>(strings->at(i));
+      }
+      catch (const boost::bad_lexical_cast& error) {
+        // TODO: add logs
+        return std::nullopt;
+      }
+    }
+
+    return result;
+  }
 }
 
 template <>
