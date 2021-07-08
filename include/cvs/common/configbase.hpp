@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <cvs/common/config.hpp>
@@ -138,30 +137,23 @@ std::optional<Subtype> get_value_from_ptree(const boost::property_tree::ptree& s
   if constexpr (!is_vector_specialization) {
     return utils::boostOptionalToStd(source.get_optional<Subtype>(name));
   } else {
-    auto strings = get_value_from_ptree<std::vector<std::string>>(source, name);
-    if (!strings) {
-      return std::nullopt;
-    }
+    const auto&            object = source.get_child_optional(name);
+    std::optional<Subtype> result;
+    if (object && !object->empty() && object->data().empty()) {
+      result = Subtype();
+      for (const auto& item : object.get()) {
+        auto value_optional = item.second.template get_value_optional<Subtype::value_type>();
+        if (!value_optional) {
+          return std::nullopt;
+        }
 
-    Subtype result(strings->size());
-    for (size_t i = 0; i < result.size(); ++i) {
-      try {
-        result[i] = boost::lexical_cast<std::string>(strings->at(i));
-      }
-      catch (const boost::bad_lexical_cast& error) {
-        // TODO: add logs
-        return std::nullopt;
+        result->push_back(*value_optional);
       }
     }
 
     return result;
   }
 }
-
-template <>
-std::optional<std::vector<std::string>> get_value_from_ptree<std::vector<std::string>>(
-    const boost::property_tree::ptree& source,
-    const std::string&                 name);
 
 template <typename Subtype,
           auto&           name,
