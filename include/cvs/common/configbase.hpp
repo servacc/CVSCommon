@@ -1,8 +1,8 @@
 #pragma once
 
+#include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/lexical_cast.hpp>
 #include <cvs/common/config.hpp>
 #include <cvs/common/configutils.hpp>
 
