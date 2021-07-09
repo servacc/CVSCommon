@@ -142,7 +142,7 @@ std::optional<Subtype> get_value_from_ptree(const boost::property_tree::ptree& s
     if (object && !object->empty() && object->data().empty()) {
       result = Subtype();
       for (const auto& item : object.get()) {
-        auto value_optional = item.second.template get_value_optional<Subtype::value_type>();
+        auto value_optional = item.second.template get_value_optional<typename Subtype::value_type>();
         if (!value_optional) {
           return std::nullopt;
         }
