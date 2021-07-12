@@ -129,14 +129,38 @@ enum class ConfigValueKind {
   WITH_DEFAULT_VALUE,
 };
 
+template <typename Subtype>
+std::optional<Subtype> get_value_from_ptree(const boost::property_tree::ptree& source, const std::string& name) {
+  constexpr bool is_vector_specialization = cvs::common::utils::is_specialization<Subtype, std::vector>::value;
+  static_assert(std::is_arithmetic_v<Subtype> || std::is_same_v<Subtype, std::string> || is_vector_specialization,
+                "Subtype must not be a arithmetic type or a std::string or a vector");
+  if constexpr (!is_vector_specialization) {
+    return utils::boostOptionalToStd(source.get_optional<Subtype>(name));
+  } else {
+    const auto&            object = source.get_child_optional(name);
+    std::optional<Subtype> result;
+    if (object && !object->empty() && object->data().empty()) {
+      result = Subtype();
+      for (const auto& item : object.get()) {
+        auto value_optional = item.second.template get_value_optional<typename Subtype::value_type>();
+        if (!value_optional) {
+          return std::nullopt;
+        }
+
+        result->push_back(*value_optional);
+      }
+    }
+
+    return result;
+  }
+}
+
 template <typename Subtype,
           auto&           name,
           ConfigValueKind value_type,
           typename DefaultValueType = void,
           bool is_global            = false>
 struct ConfigStaticValue {
-  static_assert(std::is_arithmetic_v<Subtype> || std::is_same_v<Subtype, std::string>,
-                "Subtype must not be a arithmetic type or a std::string");
   static_assert(!std::is_const_v<Subtype> && !std::is_reference_v<Subtype>,
                 "Subtype must not be a constant or a reference");
 
@@ -145,9 +169,9 @@ struct ConfigStaticValue {
   static std::optional<ResultType> parse(
       const boost::property_tree::ptree&                                             source,
       const std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global_source = std::nullopt) {
-    std::optional<Subtype> result = utils::boostOptionalToStd(source.get_optional<Subtype>(name));
+    auto result = get_value_from_ptree<Subtype>(source, name);
     if (!result && global_source && is_global) {
-      result = utils::boostOptionalToStd(global_source.value().get().get_optional<Subtype>(name));
+      result = get_value_from_ptree<Subtype>(global_source.value().get(), name);
     }
 
     if constexpr (value_type == ConfigValueKind::OPTIONAL) {

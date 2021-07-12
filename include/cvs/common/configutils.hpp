@@ -60,4 +60,10 @@ std::optional<ResultType> boostOptionalToStd(boost::optional<InnerType> &&value)
   return value ? std::make_optional<ResultType>(value.get()) : std::nullopt;
 }
 
+template <typename Test, template <typename...> class Ref>
+struct is_specialization : std::false_type {};
+
+template <template <typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type {};
+
 }  // namespace cvs::common::utils
