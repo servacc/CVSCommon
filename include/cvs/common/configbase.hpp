@@ -302,4 +302,8 @@ struct Dummy {
         std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt) { \
       return cvs::common::ConfigBase::make<name>(source, global);                                         \
     }                                                                                                     \
+                                                                                                          \
+    static constexpr std::string_view get_name() {                                                        \
+      return #name;                                                                                       \
+    }                                                                                                     \
   };

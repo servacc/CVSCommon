@@ -2,6 +2,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <cvs/common/configutils.hpp>
+#include <fmt/core.h>
 
 #include <optional>
 #include <string>
@@ -25,6 +26,17 @@ class Config {
   template <typename Config_parser>
   auto parse() const {
     return Config_parser::make(tree_, global_);
+  }
+
+  template <typename Config_parser, typename Exception = std::runtime_error>
+  auto parse_or_throw(std::optional<std::string> additional_error = std::nullopt) const {
+    auto result = Config_parser::make(tree_, global_);
+    if (!result) {
+      throw Exception{fmt::format("Can't parse {} config.{}", Config_parser::get_name(),
+                                  additional_error ? additional_error.value() : "")};
+    }
+
+    return result.value();
   }
 
   [[nodiscard]] std::string_view getName() const;
