@@ -303,7 +303,5 @@ struct Dummy {
       return cvs::common::ConfigBase::make<name>(source, global);                                         \
     }                                                                                                     \
                                                                                                           \
-    static constexpr std::string_view get_name() {                                                        \
-      return #name;                                                                                       \
-    }                                                                                                     \
+    static constexpr std::string_view get_name() { return #name; }                                        \
   };
