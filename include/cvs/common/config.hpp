@@ -44,6 +44,7 @@ class Config {
   [[nodiscard]] std::vector<Config>   getChildren() const;
   [[nodiscard]] std::vector<Config>   getChildren(std::string_view) const;
   [[nodiscard]] std::optional<Config> getFirstChild(std::string_view) const;
+  [[nodiscard]] std::vector<Config>   getArray(const std::string&) const;
 
   template <typename ResultType>
   [[nodiscard]] std::optional<ResultType> getValueOptional(const std::string &name) const {
