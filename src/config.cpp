@@ -68,7 +68,7 @@ std::vector<Config> Config::getChildren() const {
 std::vector<Config> Config::getChildren(std::string_view name) const {
   std::vector<Config> result;
 
-  for (auto node : tree_) {
+  for (const auto &node : tree_) {
     if (node.first == name)
       result.emplace_back(node, global_);
   }
@@ -82,6 +82,24 @@ std::optional<Config> Config::getFirstChild(std::string_view name) const {
     return std::nullopt;
 
   return children.front();
+}
+
+std::optional<std::vector<Config> > Config::getArray(const std::string &name) const {
+  const auto &child = tree_.get_child_optional(name);
+  if (!child) {
+    return std::nullopt;
+  }
+
+  std::vector<Config> result;
+  if (child->empty() || !child->data().empty()) {
+    return result;
+  }
+
+  for (const auto &element : *child) {
+    result.emplace_back(element, global_);
+  }
+
+  return result;
 }
 
 std::string_view Config::getName() const { return key_; }

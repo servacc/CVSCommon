@@ -2,6 +2,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <cvs/common/configutils.hpp>
+#include <fmt/core.h>
 
 #include <optional>
 #include <string>
@@ -27,11 +28,23 @@ class Config {
     return Config_parser::make(tree_, global_);
   }
 
+  template <typename Config_parser, typename Exception = std::runtime_error>
+  auto parse_or_throw(std::optional<std::string> additional_message = std::nullopt) const {
+    auto result = Config_parser::make(tree_, global_);
+    if (!result) {
+      throw Exception{fmt::format("Can't parse {} config.{}", Config_parser::get_name(),
+                                  additional_message ? additional_message.value() : "")};
+    }
+
+    return result.value();
+  }
+
   [[nodiscard]] std::string_view getName() const;
 
-  [[nodiscard]] std::vector<Config>   getChildren() const;
-  [[nodiscard]] std::vector<Config>   getChildren(std::string_view) const;
-  [[nodiscard]] std::optional<Config> getFirstChild(std::string_view) const;
+  [[nodiscard]] std::vector<Config>                 getChildren() const;
+  [[nodiscard]] std::vector<Config>                 getChildren(std::string_view) const;
+  [[nodiscard]] std::optional<Config>               getFirstChild(std::string_view) const;
+  [[nodiscard]] std::optional<std::vector<Config> > getArray(const std::string &) const;
 
   template <typename ResultType>
   [[nodiscard]] std::optional<ResultType> getValueOptional(const std::string &name) const {
