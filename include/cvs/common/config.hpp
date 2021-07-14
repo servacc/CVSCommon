@@ -29,11 +29,11 @@ class Config {
   }
 
   template <typename Config_parser, typename Exception = std::runtime_error>
-  auto parse_or_throw(std::optional<std::string> additional_error = std::nullopt) const {
+  auto parse_or_throw(std::optional<std::string> additional_message = std::nullopt) const {
     auto result = Config_parser::make(tree_, global_);
     if (!result) {
       throw Exception{fmt::format("Can't parse {} config.{}", Config_parser::get_name(),
-                                  additional_error ? additional_error.value() : "")};
+                                  additional_message ? additional_message.value() : "")};
     }
 
     return result.value();
