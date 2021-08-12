@@ -19,12 +19,12 @@ struct CVSConfig : public CVSConfigBase {
   using Self = ConfigType;
 
   struct BaseFieldDescriptor {
-    static constexpr const char* description_format = "{: <10} {: <10} {: <9} {: <10} Description: {}";
+    static constexpr const char* description_format = "{}{: <10} {: <10} {: <9} {: <10} Description: {}";
 
     BaseFieldDescriptor() { Self::descriptors().push_back(this); }
     virtual ~BaseFieldDescriptor() = default;
 
-    virtual bool has_dafault() const = 0;
+    virtual bool has_default() const = 0;
     virtual bool is_optional() const = 0;
 
     virtual void        set(Self& b, const boost::property_tree::ptree& ptree) = 0;
@@ -43,7 +43,7 @@ struct CVSConfig : public CVSConfigBase {
   template <typename T, auto& field_name_str, auto& field_description, auto& field_base_type_str, T Self::*pointer>
   struct FieldDescriptor<T, field_name_str, field_description, field_base_type_str, pointer, std::true_type>
       : public BaseFieldDescriptor {
-    bool has_dafault() const override { return false; }
+    bool has_default() const override { return false; }
     bool is_optional() const override { return false; }
 
     void set(Self& config, const boost::property_tree::ptree& ptree) override {
@@ -51,8 +51,8 @@ struct CVSConfig : public CVSConfigBase {
     }
 
     std::string describe(std::string_view prefix) const override {
-      return prefix.data() + fmt::format(BaseFieldDescriptor::description_format, field_name_str, field_base_type_str,
-                                         "", "", field_description);
+      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str, "", "",
+                         field_description);
     }
   };
 
@@ -60,13 +60,13 @@ struct CVSConfig : public CVSConfigBase {
   template <typename T, auto& field_name_str, auto& field_description, auto& field_base_type_str, T Self::*pointer>
   struct FieldDescriptor<T, field_name_str, field_description, field_base_type_str, pointer, std::false_type>
       : public BaseFieldDescriptor {
-    bool has_dafault() const override { return false; }
+    bool has_default() const override { return false; }
     bool is_optional() const override { return false; }
 
     void set(Self& config, const boost::property_tree::ptree& ptree) override {
       bool can_be_default = true;
       for (auto f : T::descriptors()) {
-        if (!f->has_dafault() && !f->is_optional()) {
+        if (!f->has_default() && !f->is_optional()) {
           can_be_default = false;
           break;
         }
@@ -83,10 +83,10 @@ struct CVSConfig : public CVSConfigBase {
     }
 
     std::string describe(std::string_view prefix) const override {
-      return prefix.data() +
-             fmt::format(BaseFieldDescriptor::description_format, field_name_str, field_base_type_str, "", "",
+      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str, "", "",
                          field_description) +
-             "\n" + prefix.data() + field_name_str + " fields:" + T::describeFields("\n" + std::string{prefix} + " ");
+             fmt::format("\n{}{} fields:{}", prefix, field_name_str,
+                         T::describeFields("\n" + std::string{prefix} + " "));
     }
   };
 
@@ -98,7 +98,7 @@ struct CVSConfig : public CVSConfigBase {
             T Self::*pointer,
             auto&    default_value>
   struct FieldDescriptorDefault : public BaseFieldDescriptor {
-    bool has_dafault() const override { return true; }
+    bool has_default() const override { return true; }
     bool is_optional() const override { return false; }
 
     void set(Self& config, const boost::property_tree::ptree& ptree) override {
@@ -106,15 +106,15 @@ struct CVSConfig : public CVSConfigBase {
     }
 
     std::string describe(std::string_view prefix) const override {
-      return prefix.data() + fmt::format(BaseFieldDescriptor::description_format, field_name_str, field_base_type_str,
-                                         "Default: ", default_value, field_description);
+      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str,
+                         "Default: ", default_value, field_description);
     }
   };
 
   // Optional field
   template <typename T, auto& field_name_str, auto& field_description, auto& field_base_type_str, T Self::*pointer>
   struct FieldDescriptorOptional : public BaseFieldDescriptor {
-    bool has_dafault() const override { return false; }
+    bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
     void set(Self& config, const boost::property_tree::ptree& ptree) override {
@@ -124,8 +124,8 @@ struct CVSConfig : public CVSConfigBase {
     }
 
     std::string describe(std::string_view prefix) const override {
-      return prefix.data() + fmt::format(BaseFieldDescriptor::description_format, field_name_str, field_base_type_str,
-                                         "Optional", "", field_description);
+      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str,
+                         "Optional", "", field_description);
     }
   };
 
