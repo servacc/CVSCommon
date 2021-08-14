@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/property_tree/ptree.hpp>
+#include <cvs/common/constexprString.hpp>
 #include <cvs/common/general.hpp>
 #include <fmt/format.h>
 
@@ -16,7 +17,7 @@ struct CVSConfigBase {
   static boost::property_tree::ptree load(const std::filesystem::path&);
 };
 
-template <typename ConfigType, auto& Name, auto& Description>
+template <typename ConfigType, typename Name, typename Description>
 struct CVSConfig : public CVSConfigBase {
   using Self = ConfigType;
 
@@ -219,12 +220,12 @@ struct CVSConfig : public CVSConfigBase {
       return result;
     }
     catch (...) {
-      CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format("Can't init config {}", Name)))
+      CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format("Can't init config {}", Name::value)))
     }
   }
 
   static std::string describe() {
-    std::string result = fmt::format("{}\nDescription: {}\nFields:", Name, Description);
+    std::string result = fmt::format("{}\nDescription: {}\nFields:", Name::value, Description::value);
     result += describeFields("\n");
     return result;
   }
@@ -264,7 +265,8 @@ struct CVSConfig : public CVSConfigBase {
 #define CVS_FIELD_OPT(field_name, field_type, field_description) \
   CVS_FIELD_BASE(field_name, std::optional<field_type>, field_type, field_description)
 
-#define CVS_CONFIG(name, description)                            \
-  static constexpr const char* name##_name        = #name;       \
-  static constexpr const char* name##_description = description; \
-  struct name : public cvs::common::CVSConfig<name, name##_name, name##_description>
+#define CVS_CONFIG(name, description)                                                              \
+  static constexpr const char* name##_name        = #name;                                         \
+  static constexpr const char* name##_description = description;                                   \
+  struct name : public cvs::common::CVSConfig<name, decltype(cvs::common::getConstexprString([](){ \
+    return #name;})), decltype(cvs::common::getConstexprString([](){ return description;}))>

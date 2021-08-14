@@ -41,6 +41,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 target_sources(${PROJECT_NAME}
   PRIVATE
+    include/cvs/common/constexprString.hpp
     include/cvs/common/general.hpp
     include/cvs/common/config.hpp
     include/cvs/common/staticfactory.hpp
