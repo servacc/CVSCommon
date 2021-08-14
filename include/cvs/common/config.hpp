@@ -10,6 +10,8 @@
 namespace cvs::common {
 
 struct CVSConfigBase {
+  static constexpr auto no_default = nullptr;
+
   static boost::property_tree::ptree load(const std::string&);
   static boost::property_tree::ptree load(const std::filesystem::path&);
 };
@@ -21,6 +23,9 @@ struct CVSConfig : public CVSConfigBase {
   struct BaseFieldDescriptor {
     static constexpr const char* description_format = "{}{: <10} {: <10} {: <9} {: <10} Description: {}";
 
+    static constexpr const char* optional_str = "Optional";
+    static constexpr const char* default_str  = "Default: ";
+
     BaseFieldDescriptor() { Self::descriptors().push_back(this); }
     virtual ~BaseFieldDescriptor() = default;
 
@@ -31,18 +36,15 @@ struct CVSConfig : public CVSConfigBase {
     virtual std::string describe(std::string_view prefix) const                = 0;
   };
 
+  // Simple field
   template <typename T,
             auto& field_name_str,
             auto& field_description,
             auto& field_base_type_str,
             T Self::*pointer,
-            typename = std::conditional_t<std::is_base_of_v<CVSConfigBase, T>, std::false_type, std::true_type>>
-  struct FieldDescriptor {};
-
-  // Simple field
-  template <typename T, auto& field_name_str, auto& field_description, auto& field_base_type_str, T Self::*pointer>
-  struct FieldDescriptor<T, field_name_str, field_description, field_base_type_str, pointer, std::true_type>
-      : public BaseFieldDescriptor {
+            auto&    field_default_value = no_default,
+            typename                     = void>
+  struct FieldDescriptor : public BaseFieldDescriptor {
     bool has_default() const override { return false; }
     bool is_optional() const override { return false; }
 
@@ -56,10 +58,77 @@ struct CVSConfig : public CVSConfigBase {
     }
   };
 
-  // Nested config
-  template <typename T, auto& field_name_str, auto& field_description, auto& field_base_type_str, T Self::*pointer>
-  struct FieldDescriptor<T, field_name_str, field_description, field_base_type_str, pointer, std::false_type>
+  // Field with default value
+  template <typename T,
+            auto& field_name_str,
+            auto& field_description,
+            auto& field_base_type_str,
+            T Self::*pointer,
+            auto&    field_default_value>
+  struct FieldDescriptor<T,
+                         field_name_str,
+                         field_description,
+                         field_base_type_str,
+                         pointer,
+                         field_default_value,
+                         std::enable_if_t<std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T>>>
       : public BaseFieldDescriptor {
+    bool has_default() const override { return true; }
+    bool is_optional() const override { return false; }
+
+    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+      config.*pointer = ptree.get(field_name_str, field_default_value);
+    }
+
+    std::string describe(std::string_view prefix) const override {
+      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str,
+                         BaseFieldDescriptor::default_str, field_default_value, field_description);
+    }
+  };
+
+  // Optional field
+  template <typename T,
+            auto&            field_name_str,
+            auto&            field_description,
+            auto&            field_base_type_str,
+            std::optional<T> Self::*pointer,
+            auto&                   field_default_value>
+  struct FieldDescriptor<std::optional<T>,
+                         field_name_str,
+                         field_description,
+                         field_base_type_str,
+                         pointer,
+                         field_default_value,
+                         std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
+    bool has_default() const override { return false; }
+    bool is_optional() const override { return true; }
+
+    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+      auto val = ptree.get_optional<T>(field_name_str);
+      if (val)
+        config.*pointer = std::move(*val);
+    }
+
+    std::string describe(std::string_view prefix) const override {
+      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str,
+                         BaseFieldDescriptor::optional_str, "", field_description);
+    }
+  };
+
+  // Nested config
+  template <typename T,
+            auto& field_name_str,
+            auto& field_description,
+            auto& field_base_type_str,
+            T Self::*pointer,
+            auto&    field_default_value>
+  struct FieldDescriptor<T,
+                         field_name_str,
+                         field_description,
+                         field_base_type_str,
+                         pointer,
+                         field_default_value,
+                         std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
     bool has_default() const override { return false; }
     bool is_optional() const override { return false; }
 
@@ -90,42 +159,36 @@ struct CVSConfig : public CVSConfigBase {
     }
   };
 
-  // Field with default value
+  // Optional nested config
   template <typename T,
-            auto& field_name_str,
-            auto& field_description,
-            auto& field_base_type_str,
-            T Self::*pointer,
-            auto&    default_value>
-  struct FieldDescriptorDefault : public BaseFieldDescriptor {
-    bool has_default() const override { return true; }
-    bool is_optional() const override { return false; }
-
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
-      config.*pointer = ptree.get(field_name_str, default_value);
-    }
-
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str,
-                         "Default: ", default_value, field_description);
-    }
-  };
-
-  // Optional field
-  template <typename T, auto& field_name_str, auto& field_description, auto& field_base_type_str, T Self::*pointer>
-  struct FieldDescriptorOptional : public BaseFieldDescriptor {
+            auto&            field_name_str,
+            auto&            field_description,
+            auto&            field_base_type_str,
+            std::optional<T> Self::*pointer,
+            auto&                   field_default_value>
+  struct FieldDescriptor<std::optional<T>,
+                         field_name_str,
+                         field_description,
+                         field_base_type_str,
+                         pointer,
+                         field_default_value,
+                         std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
     bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
     void set(Self& config, const boost::property_tree::ptree& ptree) override {
-      auto val = ptree.get_optional<typename T::value_type>(field_name_str);
-      if (val)
-        config.*pointer = std::move(*val);
+      if (auto iter = ptree.find(field_name_str); iter != ptree.not_found()) {
+        config.*pointer = T::make(iter->second).value();
+      } else {
+        config.*pointer = std::nullopt;
+      }
     }
 
     std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str, field_base_type_str,
-                         "Optional", "", field_description);
+                         BaseFieldDescriptor::optional_str, "", field_description) +
+             fmt::format("\n{}{} fields:{}", prefix, field_name_str,
+                         T::describeFields("\n" + std::string{prefix} + " "));
     }
   };
 
@@ -182,24 +245,24 @@ struct CVSConfig : public CVSConfigBase {
 
 }  // namespace cvs::common
 
-#define CVS_FIELD_BASE(descriptor_type, field_name, field_type, field_base_type, field_description, ...) \
-  field_type                   field_name;                                                               \
-  static constexpr const char* field_name##_name        = #field_name;                                   \
-  static constexpr const char* field_name##_description = field_description;                             \
-  static constexpr const char* field_name##_type_name   = #field_base_type;                              \
-  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                      \
-  static inline const auto& field_name##_descriptor =                                                    \
-      descriptor_type<field_type, field_name##_name, field_name##_description, field_name##_type_name,   \
+#define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, ...)                \
+  field_type                   field_name;                                                             \
+  static constexpr const char* field_name##_name        = #field_name;                                 \
+  static constexpr const char* field_name##_description = field_description;                           \
+  static constexpr const char* field_name##_type_name   = #field_base_type;                            \
+  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                    \
+  static inline const auto& field_name##_descriptor =                                                  \
+      FieldDescriptor<field_type, field_name##_name, field_name##_description, field_name##_type_name, \
                       &Self::field_name __VA_OPT__(, field_name##_default_value)> {}
 
 #define CVS_FIELD(field_name, field_type, field_description) \
-  CVS_FIELD_BASE(FieldDescriptor, field_name, field_type, field_type, field_description)
+  CVS_FIELD_BASE(field_name, field_type, field_type, field_description)
 
 #define CVS_FIELD_DEF(field_name, field_type, field_default, field_description) \
-  CVS_FIELD_BASE(FieldDescriptorDefault, field_name, field_type, field_type, field_description, field_default)
+  CVS_FIELD_BASE(field_name, field_type, field_type, field_description, field_default)
 
 #define CVS_FIELD_OPT(field_name, field_type, field_description) \
-  CVS_FIELD_BASE(FieldDescriptorOptional, field_name, std::optional<field_type>, field_type, field_description)
+  CVS_FIELD_BASE(field_name, std::optional<field_type>, field_type, field_description)
 
 #define CVS_CONFIG(name, description)                            \
   static constexpr const char* name##_name        = #name;       \

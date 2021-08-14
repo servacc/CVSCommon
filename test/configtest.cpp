@@ -24,11 +24,18 @@ CVS_CONFIG(TestConfig, "Test config") {
   };
   CVS_FIELD(nested1, NestedConfig1, "Nested field 1");
   CVS_FIELD(nested2, NestedConfig1, "Nested field 2");
+
+  CVS_CONFIG(NestedConfig2, "Nested config 2") {
+    CVS_FIELD(value0, float, "Nested 2. Default field 0");
+    CVS_FIELD(value1, float, "Nested 2. Optional field 1");
+  };
+  CVS_FIELD_OPT(nested3, NestedConfig2, "Nested field 3");
 };
 
 TEST(ConfigTest, help) {
   auto description = TestConfig::describe();
   ASSERT_FALSE(description.empty());
+  std::cout << description << std::endl;
 }
 
 TEST(ConfigTest, parsing) {
@@ -60,4 +67,6 @@ TEST(ConfigTest, parsing) {
 
   EXPECT_FLOAT_EQ(0.3, params.value().nested2.value0);
   EXPECT_FALSE(params.value().nested2.value1.has_value());
+
+  EXPECT_FALSE(params.value().nested3.has_value());
 }
