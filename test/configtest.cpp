@@ -26,8 +26,8 @@ CVS_CONFIG(TestConfig, "Test config") {
   CVS_FIELD(nested2, NestedConfig1, "Nested field 2");
 
   CVS_CONFIG(NestedConfig2, "Nested config 2") {
-    CVS_FIELD(value0, float, "Nested 2. Default field 0");
-    CVS_FIELD(value1, float, "Nested 2. Optional field 1");
+    CVS_FIELD(value0, float, "Nested 2. Field 0");
+    CVS_FIELD(value1, float, "Nested 2. Field 1");
   };
   CVS_FIELD_OPT(nested3, NestedConfig2, "Nested field 3");
 };

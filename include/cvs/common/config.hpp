@@ -260,13 +260,12 @@ struct CVSConfig : public CVSConfigBase {
 
 }  // namespace cvs::common
 
-#define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, ...)                    \
-  field_type field_name;                                                                                   \
-  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                        \
-  static inline const auto& field_name##_descriptor =                                                      \
-      FieldDescriptor<field_type, decltype(cvs::common::getConstexprString([]() { return #field_name; })), \
-                      decltype(cvs::common::getConstexprString([]() { return field_description; })),       \
-                      decltype(cvs::common::getConstexprString([]() { return #field_base_type; })),        \
+#define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, ...)                     \
+  field_type field_name;                                                                                    \
+  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                         \
+  static inline const auto& field_name##_descriptor =                                                       \
+      FieldDescriptor<field_type, CVS_CONSTEXPRSTRING(#field_name), CVS_CONSTEXPRSTRING(field_description), \
+                      CVS_CONSTEXPRSTRING(#field_base_type),                                                \
                       &Self::field_name __VA_OPT__(, field_name##_default_value)> {}
 
 #define CVS_FIELD(field_name, field_type, field_description) \
@@ -278,8 +277,5 @@ struct CVSConfig : public CVSConfigBase {
 #define CVS_FIELD_OPT(field_name, field_type, field_description) \
   CVS_FIELD_BASE(field_name, std::optional<field_type>, field_type, field_description)
 
-#define CVS_CONFIG(name, description)                                                              \
-  static constexpr const char* name##_name        = #name;                                         \
-  static constexpr const char* name##_description = description;                                   \
-  struct name : public cvs::common::CVSConfig<name, decltype(cvs::common::getConstexprString([](){ \
-    return #name;})), decltype(cvs::common::getConstexprString([](){ return description;}))>
+#define CVS_CONFIG(name, description) \
+  struct name : public cvs::common::CVSConfig<name, CVS_CONSTEXPRSTRING(#name), CVS_CONSTEXPRSTRING(description)>

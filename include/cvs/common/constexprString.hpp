@@ -38,3 +38,5 @@ static constexpr auto getConstexprString(Lambda_type function) {
 }
 
 }  // namespace cvs::common
+
+#define CVS_CONSTEXPRSTRING(str) decltype(cvs::common::getConstexprString([]() { return str; }))
