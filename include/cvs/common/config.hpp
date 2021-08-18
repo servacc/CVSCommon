@@ -258,15 +258,22 @@ struct CVSConfig : public CVSConfigBase {
   }
 };
 
+namespace detail {
+template <typename T, typename Name, typename Description>
+static constexpr auto getCVSConfigType(const T*, const Name&, const Description&) {
+  return cvs::common::CVSConfig<T, Name, Description>{};
+}
+}  // namespace detail
+
 }  // namespace cvs::common
 
-#define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, ...)                     \
-  field_type field_name;                                                                                    \
-  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                         \
-  static inline const auto& field_name##_descriptor =                                                       \
-      FieldDescriptor<field_type, CVS_CONSTEXPRSTRING(#field_name), CVS_CONSTEXPRSTRING(field_description), \
-                      CVS_CONSTEXPRSTRING(#field_base_type),                                                \
-                      &Self::field_name __VA_OPT__(, field_name##_default_value)> {}
+#define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, ...)                      \
+  field_type field_name;                                                                                     \
+  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                          \
+  static inline const auto& field_name##_descriptor =                                                        \
+      (FieldDescriptor<field_type, CVS_CONSTEXPRSTRING(#field_name), CVS_CONSTEXPRSTRING(field_description), \
+                       CVS_CONSTEXPRSTRING(#field_base_type),                                                \
+                       &Self::field_name __VA_OPT__(, field_name##_default_value)>{})
 
 #define CVS_FIELD(field_name, field_type, field_description) \
   CVS_FIELD_BASE(field_name, field_type, field_type, field_description)
@@ -277,5 +284,65 @@ struct CVSConfig : public CVSConfigBase {
 #define CVS_FIELD_OPT(field_name, field_type, field_description) \
   CVS_FIELD_BASE(field_name, std::optional<field_type>, field_type, field_description)
 
-#define CVS_CONFIG(name, description) \
-  struct name : public cvs::common::CVSConfig<name, CVS_CONSTEXPRSTRING(#name), CVS_CONSTEXPRSTRING(description)>
+// getCVSConfigType is used because BOOST_PP_SEQ_FOR_EACH (configbase.hpp) results in an error in the template argument
+// list.
+//#define CVS_CONFIG(name, description) \
+//  struct name : public cvs::common::CVSConfig<name, CVS_CONSTEXPRSTRING(#name), CVS_CONSTEXPRSTRING(description)>
+#define CVS_CONFIG(name, description)                                  \
+  struct name;                                                         \
+  struct name : public decltype(cvs::common::detail::getCVSConfigType( \
+                    static_cast<name*>(nullptr), CVS_CONSTEXPRSTRING(#name){}, CVS_CONSTEXPRSTRING(description){}))
+
+namespace cvs::common {
+
+// deprecated class
+class Config {
+ public:
+  [[deprecated]] explicit Config() = default;
+  [[deprecated]] explicit Config(
+      const boost::property_tree::ptree&                                       tree,
+      std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt,
+      std::string                                                              name   = "");
+
+  [[deprecated]] explicit Config(
+      const boost::property_tree::ptree::value_type&                           iterator,
+      std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt);
+
+  [[deprecated]] static std::optional<Config> make(std::string&& file_content);
+  [[deprecated]] static std::optional<Config> makeFromFile(const std::string& file_name);
+
+  template <typename Config_parser>
+  [[deprecated]] auto parse() const {
+    return Config_parser::make(tree_);
+  }
+
+  [[nodiscard]] std::string_view getName() const;
+
+  [[nodiscard]] std::vector<Config>   getChildren() const;
+  [[nodiscard]] std::vector<Config>   getChildren(std::string_view) const;
+  [[nodiscard]] std::optional<Config> getFirstChild(std::string_view) const;
+
+  template <typename ResultType>
+  [[nodiscard]] std::optional<ResultType> getValueOptional(const std::string& name) const {
+    if (auto val = tree_.get_optional<ResultType>(name); val)
+      return *val;
+    return std::nullopt;
+  }
+
+  template <typename ResultType>
+  [[nodiscard]] ResultType getValueOrDefault(const std::string& name, ResultType default_value) const {
+    return tree_.get(name, default_value);
+  }
+
+  [[nodiscard]] bool has_value() const;
+
+ private:
+  void setGlobal(const boost::property_tree::ptree& global);
+
+ private:
+  boost::property_tree::ptree                                              tree_;
+  std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global_;
+  std::string                                                              key_;
+};
+
+}  // namespace cvs::common

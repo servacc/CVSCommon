@@ -11,7 +11,7 @@ project(config_test)
 enable_testing()
 find_package(GTest REQUIRED)
 
-add_executable(${PROJECT_NAME} configtest.cpp)
+add_executable(${PROJECT_NAME} configtest.cpp deprecated.cpp)
 target_link_libraries(${PROJECT_NAME} CVSCommon GTest::gtest GTest::gtest_main)
 
 add_test(AllTestsInFoo foo)

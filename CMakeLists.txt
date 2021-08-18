@@ -44,6 +44,7 @@ target_sources(${PROJECT_NAME}
     include/cvs/common/constexprString.hpp
     include/cvs/common/general.hpp
     include/cvs/common/config.hpp
+    include/cvs/common/configbase.hpp
     include/cvs/common/staticfactory.hpp
     include/cvs/common/factory.hpp
 
