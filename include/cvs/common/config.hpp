@@ -269,7 +269,7 @@ static constexpr auto getCVSConfigType(const T*, const Name&, const Description&
 
 #define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, ...)                      \
   field_type field_name;                                                                                     \
-  __VA_OPT__(static constexpr field_type field_name##_default_value = __VA_ARGS__;)                          \
+  __VA_OPT__(static inline const field_type field_name##_default_value = __VA_ARGS__;)                       \
   static inline const auto& field_name##_descriptor =                                                        \
       (FieldDescriptor<field_type, CVS_CONSTEXPRSTRING(#field_name), CVS_CONSTEXPRSTRING(field_description), \
                        CVS_CONSTEXPRSTRING(#field_base_type),                                                \

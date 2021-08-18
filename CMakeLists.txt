@@ -71,8 +71,10 @@ include(cmake/CVSInstall.cmake)
 cvs_install(TARGETS_DEV ${PROJECT_NAME}
   FILES_DEV
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cvs/common
-    FILES include/cvs/common/general.hpp
+    FILES include/cvs/common/constexprString.hpp
+          include/cvs/common/general.hpp
           include/cvs/common/config.hpp
+          include/cvs/common/configbase.hpp
           include/cvs/common/staticfactory.hpp
           include/cvs/common/factory.hpp
           ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/common/${PROJECT_NAME_LOWER}export.hpp
