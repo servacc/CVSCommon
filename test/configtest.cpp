@@ -1,170 +1,100 @@
-#include <cvs/common/configbase.hpp>
+#include <cvs/common/config.hpp>
 #include <gtest/gtest.h>
 
 #include <iostream>
 
-// using namespace cvs::common;
+CVS_CONFIG(NestedConfig0, "Nested config 0") {
+  CVS_FIELD(value0, int, "Nested 0. Test field 0");
+  CVS_FIELD_DEF(value1, float, 0.3, "Nested 0 . Default field 1");
+  CVS_FIELD_OPT(value2, float, "Nested 0. Optional field 2");
+};
 
-constexpr double kTestJsonRequiredInnerValue = 12415.123123;
-constexpr auto   kTestJsonRequiredInnerHash  = "hHHhshAHSAs0-i0 1i2=uq9f jf3";
-constexpr double kTestJsonRequiredDistance   = 7.2;
-constexpr float  kTestJsonLength             = 7.2;
-constexpr float  kTestJsonValue              = -0.0001;
+CVS_CONFIG(TestConfig, "Test config") {
+  CVS_FIELD(value0, int, "Test field 0");
+  CVS_FIELD_DEF(value1, float, 0.3, "Default field 1");
+  CVS_FIELD_DEF(value2, double, 0.05, "Default field 2");
+  CVS_FIELD_OPT(value3, float, "Optional field 3");
+  CVS_FIELD_OPT(value4, double, "Optional field 4");
 
-const std::string kParsingTestJson = R"(
-{
-  "moduleName": "test_module",
-  "required": {
-    "inner":
-      "value": ")" + std::to_string(kTestJsonRequiredInnerValue) +
-                                     R"(",
-      "hash": ")" + std::string(kTestJsonRequiredInnerHash) +
-                                     R"("
-    },
-    "distance": ")" + std::to_string(kTestJsonRequiredDistance) +
-                                     R"("
+  CVS_FIELD(nested0, NestedConfig0, "Nested field 0");
+
+  CVS_CONFIG(NestedConfig1, "Nested config 1") {
+    CVS_FIELD_DEF(value0, float, 0.3, "Nested 1. Default field 0");
+    CVS_FIELD_OPT(value1, float, "Nested 1. Optional field 1");
+  };
+  CVS_FIELD(nested1, NestedConfig1, "Nested field 1");
+  CVS_FIELD(nested2, NestedConfig1, "Nested field 2");
+
+  CVS_CONFIG(NestedConfig2, "Nested config 2") {
+    CVS_FIELD(value0, float, "Nested 2. Field 0");
+    CVS_FIELD(value1, float, "Nested 2. Field 1");
+  };
+  CVS_FIELD_OPT(nested3, NestedConfig2, "Nested field 3");
+};
+
+CVS_CONFIG(ArrayConfig, "Array config 0") {
+  CVS_FIELD(array0, std::vector<int>, "Array 0");
+  CVS_FIELD_OPT(array1, std::vector<int>, "Array 1");
+  CVS_FIELD_OPT(array2, std::vector<int>, "Array 2");
+};
+
+TEST(ConfigTest, help) {
+  auto description0 = TestConfig::describe();
+  auto description1 = ArrayConfig::describe();
+  ASSERT_FALSE(description0.empty());
+  std::cout << description0 << std::endl << std::endl << description1 << std::endl;
+}
+
+TEST(ConfigTest, parsing) {
+  const std::string test_config = R"({
+  "value0" : 10,
+  "value2" : 0.005,
+  "value4" : 100,
+  "nested0" : {
+    "value0" : 1,
+    "value1" : 2,
+    "value2" : 3
   },
-  "optional": {
-    "hash": ")" + std::string(kTestJsonRequiredInnerHash) +
-                                     R"("
-  },
-  "value": ")" + std::to_string(kTestJsonValue) +
-                                     R"("
+  "nested1" : {
+  }
 })";
 
-CVSCFG_DECLARE_CONFIG(
-    ParsingTestConfig,
-    CVSCFG_OBJECT(required,
-                  CVSCFG_VALUE(distance, std::remove_cv<decltype(kTestJsonRequiredDistance)>::type),
-                  CVSCFG_VALUE_OPTIONAL(call, std::string),
-                  CVSCFG_OBJECT(inner,
-                                CVSCFG_VALUE(value, std::remove_cv<decltype(kTestJsonRequiredInnerValue)>::type),
-                                CVSCFG_VALUE(hash,
-                                             std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type))),
-    CVSCFG_OBJECT_OPTIONAL(
-        optional,
-        CVSCFG_VALUE(distance, double, CVSCFG_SEARCH_IN_GLOBAL),
-        CVSCFG_VALUE_OPTIONAL(hash, std::remove_cv<decltype(std::string(kTestJsonRequiredInnerHash))>::type)),
-    CVSCFG_VALUE_DEFAULT(length, std::remove_cv<decltype(kTestJsonLength)>::type, kTestJsonLength),
-    CVSCFG_VALUE(value, std::remove_cv<decltype(kTestJsonValue)>::type),
-    CVSCFG_VALUE_OPTIONAL(global, cvs::common::Config))
+  auto params = TestConfig::make(test_config);
+  EXPECT_TRUE(params.has_value());
 
-TEST(main_test, parsing_test) {
-  std::stringstream ss;
-  ss << kParsingTestJson;
-  boost::property_tree::ptree root;
+  EXPECT_EQ(10, params.value().value0);
+  EXPECT_FLOAT_EQ(0.3, params.value().value1);
+  EXPECT_DOUBLE_EQ(0.005, params.value().value2);
+  EXPECT_FALSE(params.value().value3.has_value());
+  ASSERT_TRUE(params.value().value4.has_value());
+  EXPECT_DOUBLE_EQ(100, params.value().value4.value());
 
-  try {
-    boost::property_tree::read_json(ss, root);
-  }
-  catch (const boost::property_tree::json_parser::json_parser_error& exception) {
-    FAIL() << "Unexpected json_parser_error: " << exception.what() << ", in line number: " << exception.line();
-  }
-  catch (const std::exception& exception) {
-    FAIL() << "Unexpected std::exception: " << exception.what();
-  }
-  catch (...) {
-    FAIL() << "Unexpected unknown exception";
-  }
+  EXPECT_FLOAT_EQ(0.3, params.value().nested1.value0);
+  EXPECT_FALSE(params.value().nested1.value1.has_value());
 
-  auto test_result = ParsingTestConfig::make(root);
+  EXPECT_FLOAT_EQ(0.3, params.value().nested2.value0);
+  EXPECT_FALSE(params.value().nested2.value1.has_value());
 
-  ASSERT_TRUE(test_result.has_value()) << "Parsing failed";
-  EXPECT_EQ(test_result->required.inner.value, kTestJsonRequiredInnerValue) << "required->inner->value parse failed";
-  EXPECT_EQ(test_result->required.inner.hash, kTestJsonRequiredInnerHash) << "required->inner->hash parse failed";
-  EXPECT_EQ(test_result->required.distance, kTestJsonRequiredDistance) << "required->distance parse failed";
-  EXPECT_EQ(test_result->required.call, std::nullopt) << "required->call parse failed";
-  EXPECT_EQ(test_result->optional, std::nullopt) << "required->optional parse failed";
-  EXPECT_EQ(test_result->length, kTestJsonLength) << "required->length parse failed";
-  EXPECT_EQ(test_result->value, kTestJsonValue) << "required->value parse failed";
-  EXPECT_EQ(test_result->global, std::nullopt) << "required->global parse failed";
+  EXPECT_FALSE(params.value().nested3.has_value());
 }
 
-TEST(main_test, module_config_test) {
-  const double      global_distance = 999.003;
-  const std::string module_name     = "test_module";
+TEST(ConfigTest, array) {
+  const std::string test_config = R"({
+  "array0" : [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+  "array2" : [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ]
+})";
 
-  const std::string module_config_test_json =
-      "{ \n"
-      "\"" +
-      module_name + "\": " + kParsingTestJson +
-      ","
-      "\"global\": {\n"
-      "\"hash\": \"" +
-      std::string(kTestJsonRequiredInnerHash) +
-      "\",\n"
-      "\"value\": \"" +
-      std::to_string(kTestJsonRequiredInnerValue) +
-      "\",\n"
-      "\"distance\": \"" +
-      std::to_string(global_distance) +
-      "\",\n"
-      "\"some\": \"ololo\"\n"
-      "}\n"
-      "}";
+  auto params = ArrayConfig::make(test_config);
+  EXPECT_TRUE(params.has_value());
 
-  std::stringstream ss;
-  ss << module_config_test_json;
-  boost::property_tree::ptree root;
+  auto q = params->array0;
 
-  try {
-    boost::property_tree::read_json(ss, root);
-  }
-  catch (const boost::property_tree::json_parser::json_parser_error& exception) {
-    FAIL() << "Unexpected json_parser_error: " << exception.what() << ", in line number: " << exception.line();
-  }
-  catch (const std::exception& exception) {
-    FAIL() << "Unexpected std::exception: " << exception.what();
-  }
-  catch (...) {
-    FAIL() << "Unexpected unknown exception";
-  }
+  for (int i = 0; i < 10; ++i)
+    EXPECT_EQ(i, params->array0[i]);
 
-  // if "auto global" only link will be returned, then broken after erasing
-  std::optional<boost::property_tree::ptree> global =
-      cvs::common::utils::boostOptionalToStd(root.get_child_optional("global"));
+  EXPECT_FALSE(params->array1.has_value());
+  EXPECT_TRUE(params->array2.has_value());
 
-  ASSERT_TRUE(global.has_value()) << "Parsing failed";
-
-  if (global) {
-    root.erase("global");
-  }
-
-  {
-    auto test_global = root.get_child_optional("global");
-    ASSERT_FALSE(test_global.has_value()) << "Erasing failed";
-  }
-
-  std::vector<cvs::common::Config> modules_configs;
-  for (const auto& element : root) {
-    modules_configs.emplace_back(element.second, global, element.first);
-  }
-
-  EXPECT_EQ(modules_configs.size(), 1) << "There must be 1 parsed config";
-  auto& test_module = modules_configs[0];
-  EXPECT_EQ(test_module.getName(), module_name) << "Wrong module name";
-  EXPECT_EQ(test_module.getValueOptional<std::remove_cv<decltype(kTestJsonValue)>::type>("value"), kTestJsonValue)
-      << "\'value\' parsing failed";
-
-  auto test_module_result = test_module.parse<ParsingTestConfig>();
-  ASSERT_TRUE(test_module_result.has_value()) << "Test module parsing failed";
-  ASSERT_TRUE(test_module_result->optional.has_value()) << "required->optional parse failed";
-  EXPECT_EQ(test_module_result->optional.value().distance, global_distance) << "global_distance parse failed";
-}
-
-CVSCFG_DECLARE_CONFIG(LoggerConfig, CVSCFG_VALUE(name, std::string))
-
-TEST(main_test, invalid_object_test) {
-  std::string invalid_object_test_json =
-      "{"
-      "\"logger\": {"
-      "\"name\": \"\""
-      "}"
-      "}";
-
-  auto config = cvs::common::Config::make(std::move(invalid_object_test_json));
-  ASSERT_TRUE(config.has_value());
-
-  auto result = config->parse<LoggerConfig>();
-  ASSERT_FALSE(result.has_value());
+  for (int i = 0; i < 10; ++i)
+    EXPECT_EQ(i * 10, params->array2->at(i));
 }
