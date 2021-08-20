@@ -10,6 +10,16 @@
 
 namespace cvs::common {
 
+namespace detail {
+
+template <typename T>
+struct is_vector : std::false_type {};
+
+template <typename T>
+struct is_vector<std::vector<T>> : public std::true_type {};
+
+}  // namespace detail
+
 struct CVSConfigBase {
   static constexpr auto no_default = nullptr;
 
@@ -104,7 +114,8 @@ struct CVSConfig : public CVSConfigBase {
                          field_base_type_str,
                          pointer,
                          field_default_value,
-                         std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
+                         std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T> && !detail::is_vector<T>::value>>
+      : public BaseFieldDescriptor {
     bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
@@ -112,6 +123,75 @@ struct CVSConfig : public CVSConfigBase {
       auto val = ptree.get_optional<T>(std::string(field_name_str::value, field_name_str::size));
       if (val)
         config.*pointer = std::move(*val);
+    }
+
+    std::string describe(std::string_view prefix) const override {
+      return fmt::format(
+          BaseFieldDescriptor::description_format, prefix, std::string(field_name_str::value, field_name_str::size),
+          std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
+          std::string(field_description::value, field_description::size));
+    }
+  };
+
+  // Vector field
+  template <typename T,
+            typename field_name_str,
+            typename field_description,
+            typename field_base_type_str,
+            std::vector<T> Self::*pointer,
+            auto&                 field_default_value>
+  struct FieldDescriptor<std::vector<T>,
+                         field_name_str,
+                         field_description,
+                         field_base_type_str,
+                         pointer,
+                         field_default_value,
+                         std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
+    bool has_default() const override { return false; }
+    bool is_optional() const override { return true; }
+
+    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+      auto           container = ptree.get_child(std::string(field_name_str::value, field_name_str::size));
+      std::vector<T> values;
+      for (auto& iter : container)
+        values.push_back(iter.second.get_value<T>());
+      config.*pointer = std::move(values);
+    }
+
+    std::string describe(std::string_view prefix) const override {
+      return fmt::format(BaseFieldDescriptor::description_format, prefix,
+                         std::string(field_name_str::value, field_name_str::size),
+                         std::string(field_base_type_str::value, field_base_type_str::size), "", "",
+                         std::string(field_description::value, field_description::size));
+    }
+  };
+
+  // Optional vector field
+  template <typename T,
+            typename field_name_str,
+            typename field_description,
+            typename field_base_type_str,
+            std::optional<std::vector<T>> Self::*pointer,
+            auto&                                field_default_value>
+  struct FieldDescriptor<std::optional<std::vector<T>>,
+                         field_name_str,
+                         field_description,
+                         field_base_type_str,
+                         pointer,
+                         field_default_value,
+                         std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
+    bool has_default() const override { return false; }
+    bool is_optional() const override { return true; }
+
+    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+      auto container = ptree.get_child_optional(std::string(field_name_str::value, field_name_str::size));
+      if (container) {
+        std::vector<T> values;
+        for (auto& iter : *container)
+          values.push_back(iter.second.get_value<T>());
+        config.*pointer = std::move(values);
+      } else
+        config.*pointer = std::nullopt;
     }
 
     std::string describe(std::string_view prefix) const override {

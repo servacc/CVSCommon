@@ -32,10 +32,17 @@ CVS_CONFIG(TestConfig, "Test config") {
   CVS_FIELD_OPT(nested3, NestedConfig2, "Nested field 3");
 };
 
+CVS_CONFIG(ArrayConfig, "Array config 0") {
+  CVS_FIELD(array0, std::vector<int>, "Array 0");
+  CVS_FIELD_OPT(array1, std::vector<int>, "Array 1");
+  CVS_FIELD_OPT(array2, std::vector<int>, "Array 2");
+};
+
 TEST(ConfigTest, help) {
-  auto description = TestConfig::describe();
-  ASSERT_FALSE(description.empty());
-  std::cout << description << std::endl;
+  auto description0 = TestConfig::describe();
+  auto description1 = ArrayConfig::describe();
+  ASSERT_FALSE(description0.empty());
+  std::cout << description0 << std::endl << std::endl << description1 << std::endl;
 }
 
 TEST(ConfigTest, parsing) {
@@ -69,4 +76,25 @@ TEST(ConfigTest, parsing) {
   EXPECT_FALSE(params.value().nested2.value1.has_value());
 
   EXPECT_FALSE(params.value().nested3.has_value());
+}
+
+TEST(ConfigTest, array) {
+  const std::string test_config = R"({
+  "array0" : [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+  "array2" : [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ]
+})";
+
+  auto params = ArrayConfig::make(test_config);
+  EXPECT_TRUE(params.has_value());
+
+  auto q = params->array0;
+
+  for (int i = 0; i < 10; ++i)
+    EXPECT_EQ(i, params->array0[i]);
+
+  EXPECT_FALSE(params->array1.has_value());
+  EXPECT_TRUE(params->array2.has_value());
+
+  for (int i = 0; i < 10; ++i)
+    EXPECT_EQ(i * 10, params->array2->at(i));
 }
