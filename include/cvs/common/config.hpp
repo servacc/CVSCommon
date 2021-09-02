@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <list>
+#include <optional>
 
 namespace cvs::common {
 
