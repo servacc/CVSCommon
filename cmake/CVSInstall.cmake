@@ -3,9 +3,17 @@ include(CMakePackageConfigHelpers)
 
 macro(cvs_install)
   set(options ENABLE_DEV)
-  set(oneValueArgs VERSION NAME CONFIG BINDIR_DEV LIBDIR_DEV BINDIR_BIN LIBDIR_BIN)
+  set(oneValueArgs VERSION NAME CONFIG BINDIR_DEV LIBDIR_DEV BINDIR_BIN LIBDIR_BIN COMPONENT_DEV COMPONENT_BIN)
   set(multiValueArgs TARGETS_BIN TARGETS_DEV HEADERS FILES_DEV FILES_BIN)
   cmake_parse_arguments(CVSINSTALL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  if(NOT CVSINSTALL_COMPONENT_DEV)
+    set(CVSINSTALL_COMPONENT_DEV dev)
+  endif()
+
+  if(NOT CVSINSTALL_COMPONENT_BIN)
+    set(CVSINSTALL_COMPONENT_BIN bin)
+  endif()
 
   if(NOT CVSINSTALL_BINDIR_DEV)
     set(CVSINSTALL_BINDIR_DEV ${CMAKE_INSTALL_BINDIR})
@@ -71,7 +79,7 @@ macro(cvs_install)
 
       install(FILES ${FILES_LIST}
         DESTINATION ${DESTINATION}
-        COMPONENT ${COMPONENT})
+        COMPONENT ${CVSINSTALL_COMPONENT_${FILES_VAR}})
 
       if(END EQUAL -1)
         break()
@@ -89,13 +97,13 @@ macro(cvs_install)
       EXPORT  ${CVSINSTALL_NAME}Targets
       RUNTIME
         DESTINATION ${CVSINSTALL_BINDIR_BIN}
-        COMPONENT   bin
+        COMPONENT   ${CVSINSTALL_COMPONENT_BIN}
       LIBRARY
         DESTINATION ${CVSINSTALL_LIBDIR_BIN}
-        COMPONENT   bin
+        COMPONENT   ${CVSINSTALL_COMPONENT_BIN}
       ARCHIVE
         DESTINATION ${CVSINSTALL_LIBDIR_BIN}
-        COMPONENT   bin)
+        COMPONENT   bin${CVSINSTALL_COMPONENT_BIN})
   endif()
 
   if(CVSINSTALL_TARGETS_DEV)
@@ -104,13 +112,13 @@ macro(cvs_install)
       EXPORT  ${CVSINSTALL_NAME}Targets
       RUNTIME
         DESTINATION ${CVSINSTALL_BINDIR_DEV}
-        COMPONENT   dev
+        COMPONENT   ${CVSINSTALL_COMPONENT_DEV}
       LIBRARY
         DESTINATION ${CVSINSTALL_LIBDIR_DEV}
-        COMPONENT   dev
+        COMPONENT   ${CVSINSTALL_COMPONENT_DEV}
       ARCHIVE
         DESTINATION ${CVSINSTALL_LIBDIR_DEV}
-        COMPONENT   dev)
+        COMPONENT   ${CVSINSTALL_COMPONENT_DEV})
   endif()
 
   if(CVSINSTALL_ENABLE_DEV)
@@ -119,7 +127,7 @@ macro(cvs_install)
         FILE         ${CVSINSTALL_NAME}Targets.cmake
         NAMESPACE    cvs::
         DESTINATION  ${CVSINSTALL_LIBDIR_DEV}/cmake/${CVSINSTALL_NAME}
-        COMPONENT    dev)
+        COMPONENT    ${CVSINSTALL_COMPONENT_DEV})
     endif()
 
     configure_package_config_file(${CVSINSTALL_CONFIG}
@@ -134,7 +142,7 @@ macro(cvs_install)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cvsinstall/${CVSINSTALL_NAME}Config.cmake
       ${CMAKE_CURRENT_BINARY_DIR}/cvsinstall/${CVSINSTALL_NAME}ConfigVersion.cmake
       DESTINATION ${CVSINSTALL_LIBDIR_DEV}/cmake/${CVSINSTALL_NAME}
-      COMPONENT   dev)
+      COMPONENT   ${CVSINSTALL_COMPONENT_DEV})
   endif()
 endmacro()
 

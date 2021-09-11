@@ -88,6 +88,7 @@ target_compile_definitions(${PROJECT_NAME}OpenCV
   INTERFACE
     CVS_LOGGER_OPENCV_ENABLED)
 
+
 cvs_install(NAME CVSLogger
   VERSION ${CVSCommon_VERSION}
   TARGETS_BIN ${PROJECT_NAME}
@@ -101,9 +102,12 @@ cvs_install(NAME CVSLogger
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon/cvs/logger/tools
     FILES include/cvs/logger/tools/fpsLogger.hpp)
 
+
 cvs_install(NAME CVSLoggerOpenCV
   VERSION ${CVSCommon_VERSION}
   TARGETS_DEV ${PROJECT_NAME}OpenCV
+  COMPONENT_DEV cvhelper
   FILES_DEV
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon/cvs/logger
     FILES include/cvs/logger/opencvHelper.hpp)
+set(CPACK_DEBIAN_CVHELPER_PACKAGE_DEPENDS "libopencv-core${OpenCV_VERSION_MAJOR}.${OpenCV_VERSION_MINOR} (>= ${OpenCV_VERSION}+dfsg), libopencv-imgcodecs${OpenCV_VERSION_MAJOR}.${OpenCV_VERSION_MINOR} (>= ${OpenCV_VERSION}+dfsg)" PARENT_SCOPE)
