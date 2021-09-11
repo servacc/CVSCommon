@@ -37,15 +37,10 @@ cvs_add_to_alias(${PROJECT_NAME})
 cvs_library_version(TARGET ${PROJECT_NAME}
   VERSION_MAJOR ${CVSCommon_VERSION_MAJOR}
   VERSION_MINOR ${CVSCommon_VERSION_MINOR})
-#cvs_create_version_file(NAME ${PROJECT_NAME}
-#                        MAJOR ${PROJECT_VERSION_MAJOR}
-#                        MINOR ${PROJECT_VERSION_MINOR}
-#                        PATCH ${PROJECT_VERSION_PATCH}
-#                        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generate/cvs/logger")
 
 generate_export_header(${PROJECT_NAME}
   EXPORT_FILE_NAME
-    ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/logger/${PROJECT_NAME_LOWER}export.hpp)
+    ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/logger/export.hpp)
 
 target_sources(${PROJECT_NAME}
   PRIVATE
@@ -54,6 +49,8 @@ target_sources(${PROJECT_NAME}
     include/cvs/logger/tools/fpsLogger.hpp
     include/cvs/logger/argumentPreprocessor.hpp
     include/cvs/logger/loggerTypes.hpp
+
+    include/cvs/logger/opencvHelper.hpp
 
     src/tools/fpsLogger.cpp
     src/logging.cpp)
@@ -70,7 +67,7 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/export>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generate>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>)
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon>)
 
 target_compile_definitions(${PROJECT_NAME}
   PUBLIC
@@ -78,40 +75,34 @@ target_compile_definitions(${PROJECT_NAME}
     $<$<BOOL:${CVSLOGGER_ENABLE_STD_BY_DEFAULT}>:CVSLOGGER_STD_ENABLED>
     $<$<BOOL:${CVSLOGGER_ENABLE_SYSD_BY_DEFAULT}>:CVSLOGGER_SYSD_ENABLED>)
 
-add_library(${PROJECT_NAME}_opencv STATIC)
-add_library(cvs::${PROJECT_NAME}_opencv ALIAS ${PROJECT_NAME}_opencv)
+add_library(${PROJECT_NAME}OpenCV INTERFACE)
+add_library(cvs::${PROJECT_NAME}OpenCV ALIAS ${PROJECT_NAME}OpenCV)
 
-target_sources(${PROJECT_NAME}_opencv
-  PRIVATE
-    include/cvs/logger/opencvHelper.hpp
-
-    src/opencvHelper.cpp)
-
-target_link_libraries(${PROJECT_NAME}_opencv
-  PUBLIC
+target_link_libraries(${PROJECT_NAME}OpenCV
+  INTERFACE
     cvs::Logger
     opencv_imgcodecs opencv_core)
 
-target_compile_definitions(${PROJECT_NAME}_opencv
-  PUBLIC
+target_compile_definitions(${PROJECT_NAME}OpenCV
+  INTERFACE
     CVS_LOGGER_OPENCV_ENABLED)
 
-#add_subdirectory(test)
+cvs_install(NAME CVSLogger
+  VERSION ${CVSCommon_VERSION}
+  TARGETS_BIN ${PROJECT_NAME}
+  FILES_DEV
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon/cvs/logger
+    FILES include/cvs/logger/logging.hpp
+          include/cvs/logger/loggable.hpp
+          include/cvs/logger/argumentPreprocessor.hpp
+          include/cvs/logger/loggerTypes.hpp
+          ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/logger/export.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon/cvs/logger/tools
+    FILES include/cvs/logger/tools/fpsLogger.hpp)
 
-#include(CVSInstall)
-
-#cvs_install(TARGETS_BIN ${PROJECT_NAME}
-#  TARGETS_DEV ${PROJECT_NAME}_opencv
-#  FILES_DEV
-#    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cvs/logger
-#    FILES include/cvs/logger/logging.hpp
-#      include/cvs/logger/loggable.hpp
-#      include/cvs/logger/tools/fpslogger.hpp
-#      include/cvs/logger/argumentpreprocessor.hpp
-#      ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/logger/${PROJECT_NAME_LOWER}export.hpp
-#      ${CMAKE_CURRENT_BINARY_DIR}/generate/cvs/logger/version.hpp
-#      include/cvs/logger/opencvhelper.hpp
-#    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cvs/logger/tools
-#    FILES include/cvs/logger/tools/fpslogger.hpp)
-
-#cvs_package()
+cvs_install(NAME CVSLoggerOpenCV
+  VERSION ${CVSCommon_VERSION}
+  TARGETS_DEV ${PROJECT_NAME}OpenCV
+  FILES_DEV
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon/cvs/logger
+    FILES include/cvs/logger/opencvHelper.hpp)
