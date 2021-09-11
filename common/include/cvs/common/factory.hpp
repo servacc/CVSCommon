@@ -1,6 +1,9 @@
 #pragma once
 
-#include <cvs/common/cvscommonexport.hpp>
+#include <boost/core/demangle.hpp>
+#include <cvs/common/export.hpp>
+#include <cvs/common/general.hpp>
+#include <fmt/format.h>
 
 #include <functional>
 #include <memory>
@@ -11,7 +14,7 @@
 namespace cvs::common {
 
 template <typename KeyType>
-class CVSCOMMON_EXPORT Factory {
+class COMMON_EXPORT Factory {
  public:
   Factory() = default;
 
@@ -55,17 +58,23 @@ class CVSCOMMON_EXPORT Factory {
   }
 
   template <typename T, typename... Args>
-  std::optional<T> create(const KeyType &key, Args &&...args) const {
-    auto key_iter = factory_functions.find(key);
-    if (key_iter == factory_functions.end())
-      return std::nullopt;
+  CVSOutcome<T> create(const KeyType &key, Args &&... args) const {
+    try {
+      auto key_iter = factory_functions.find(key);
+      if (key_iter == factory_functions.end())
+        throw std::out_of_range(fmt::format(R"(Factory method for key "{}" is not registered.)", key));
 
-    auto signature_iter = key_iter->second.find(typeid(T(Args...)));
-    if (signature_iter == key_iter->second.end())
-      return std::nullopt;
+      auto signature_iter = key_iter->second.find(typeid(T(Args...)));
+      if (signature_iter == key_iter->second.end())
+        throw std::out_of_range(fmt::format(R"(Factory method for key "{}" and signature "{}" is not registered.)", key,
+                                            boost::core::demangle(typeid(T(Args...)).name())));
 
-    auto helper = static_cast<Helper<T(Args...)> *>(signature_iter->second.get());
-    return helper->factory_function(std::forward<Args>(args)...);
+      auto helper = static_cast<Helper<T(Args...)> *>(signature_iter->second.get());
+      return helper->factory_function(std::forward<Args>(args)...);
+    }
+    catch (...) {
+      CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format(R"(Can't create object for key "{}".)", key)));
+    }
   }
 
   template <typename FactoryFunction>

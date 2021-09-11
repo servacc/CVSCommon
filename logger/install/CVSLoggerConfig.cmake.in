@@ -1,0 +1,19 @@
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+
+option(CVSLOGGER_OPENCV_IMG "Enable preprocessor for cv::Mat" ON)
+
+if(CVSLOGGER_OPENCV_IMG)
+  find_dependency(OpenCV)
+endif()
+
+find_dependency(CVSCommon)
+find_dependency(spdlog)
+find_dependency(PkgConfig)
+if(@PROJECT_NAME@_FIND_REQUIRED)
+  pkg_check_modules(systemd REQUIRED IMPORTED_TARGET libsystemd)
+else()
+  pkg_check_modules(systemd QUIET IMPORTED_TARGET libsystemd)
+endif()
+
+include ("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")

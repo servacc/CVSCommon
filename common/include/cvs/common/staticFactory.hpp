@@ -1,6 +1,8 @@
 #pragma once
 
-#include <cvs/common/cvscommonexport.hpp>
+#include <cvs/common/export.hpp>
+#include <cvs/common/general.hpp>
+#include <fmt/format.h>
 
 #include <functional>
 #include <map>
@@ -8,7 +10,7 @@
 
 namespace cvs::common {
 
-class CVSCOMMON_EXPORT StaticFactory {
+class COMMON_EXPORT StaticFactory {
  public:
   template <typename FactoryFunction, typename ImplType, typename KeyType>
   static void registerTypeDefault(const KeyType &key) {
@@ -37,13 +39,17 @@ class CVSCOMMON_EXPORT StaticFactory {
   }
 
   template <typename T, typename KeyType, typename... Args>
-  static std::optional<T> create(const KeyType &key, Args... args) {
-    auto &creator_map = factoryFunctionsMap<KeyType, T(Args...)>();
-    auto  iter        = creator_map.find(key);
-    if (iter == creator_map.end())
-      return {};
-
-    return iter->second(std::forward<Args>(args)...);
+  static CVSOutcome<T> create(const KeyType &key, Args... args) {
+    try {
+      auto &creator_map = factoryFunctionsMap<KeyType, T(Args...)>();
+      auto  iter        = creator_map.find(key);
+      if (iter == creator_map.end())
+        throw std::out_of_range(fmt::format(R"(Factory method for key "{}" is not registered.)", key));
+      return iter->second(std::forward<Args>(args)...);
+    }
+    catch (...) {
+      CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format(R"(Can't create object for key "{}".")", key)));
+    }
   }
 
   template <typename FactoryFunction, typename KeyType>
