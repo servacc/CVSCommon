@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(CVSCommon)
 
 project(CVSCommon CVS_PROJECT
-                  VERSION 0.1.0
+                  VERSION 0.2.0
                   DESCRIPTION "CVS common library"
                   LANGUAGES CXX)
 
