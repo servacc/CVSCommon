@@ -39,6 +39,7 @@ cvs_library_version(TARGET ${PROJECT_NAME}
   VERSION_MINOR ${CVSCommon_VERSION_MINOR})
 
 generate_export_header(${PROJECT_NAME}
+  BASE_NAME CVSLogger
   EXPORT_FILE_NAME
     ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/logger/export.hpp)
 

@@ -20,6 +20,7 @@ cvs_create_version_file(NAME ${PROJECT_NAME}
 
 
 generate_export_header(${PROJECT_NAME}
+  BASE_NAME CVSCommon
   EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/common/export.hpp)
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)

@@ -14,7 +14,7 @@
 namespace cvs::common {
 
 template <typename KeyType>
-class COMMON_EXPORT Factory {
+class CVSCOMMON_EXPORT Factory {
  public:
   Factory() = default;
 
@@ -58,7 +58,7 @@ class COMMON_EXPORT Factory {
   }
 
   template <typename T, typename... Args>
-  CVSOutcome<T> create(const KeyType &key, Args &&... args) const {
+  CVSOutcome<T> create(const KeyType &key, Args &&...args) const {
     try {
       auto key_iter = factory_functions.find(key);
       if (key_iter == factory_functions.end())

@@ -10,7 +10,7 @@
 
 namespace cvs::common {
 
-class COMMON_EXPORT StaticFactory {
+class CVSCOMMON_EXPORT StaticFactory {
  public:
   template <typename FactoryFunction, typename ImplType, typename KeyType>
   static void registerTypeDefault(const KeyType &key) {
