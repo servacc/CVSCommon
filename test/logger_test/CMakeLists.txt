@@ -11,5 +11,6 @@ target_sources(${PROJECT_NAME}
     factory_test.cpp
     main.cpp)
 
-target_link_libraries(${PROJECT_NAME} cvs::LoggerOpenCV GTest::gtest GTest::gtest_main)
+target_link_libraries(${PROJECT_NAME} cvs::LoggerOpenCV GTest::gtest_main)
 
+add_test(LoggerTests ${PROJECT_NAME})

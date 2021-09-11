@@ -11,6 +11,7 @@ project(CVSCommon CVS_PROJECT
 
 include(GNUInstallDirs)
 include(GenerateExportHeader)
+include(CTest)
 
 include(cmake/CVSInstall.cmake)
 

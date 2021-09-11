@@ -4,8 +4,6 @@ project(Common)
 
 add_library(${PROJECT_NAME} STATIC)
 
-message(" ${CVSCommon_VERSION_MAJOR}  ${CVSCommon_VERSION_MINOR}")
-
 cvs_add_to_alias(${PROJECT_NAME})
 cvs_library_version(TARGET ${PROJECT_NAME}
   VERSION_MAJOR ${CVSCommon_VERSION_MAJOR}
