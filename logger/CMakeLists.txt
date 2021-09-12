@@ -18,10 +18,6 @@ if (NOT SPDLOG_FMT_EXTERNAL OR NOT SPDLOG_FMT_EXTERNAL_HO)
   set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "")
 endif()
 
-if(NOT TARGET fmt::fmt)
-  find_package(fmt REQUIRED)
-endif()
-
 find_package(OpenCV REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(PkgConfig REQUIRED)

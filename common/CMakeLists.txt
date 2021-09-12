@@ -47,8 +47,6 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   Boost::boost fmt::fmt)
 
-set(CVSCOMMON_MODULE_PATH ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules)
-
 cvs_install(NAME CVSCommon
   VERSION ${CVSCommon_VERSION}
   TARGETS_DEV ${PROJECT_NAME}

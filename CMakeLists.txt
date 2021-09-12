@@ -35,6 +35,8 @@ cvs_create_version_file(NAME ${PROJECT_NAME}
 
 add_subdirectory(test)
 
+set(CVSCOMMON_MODULE_PATH ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmakemodules)
+
 cvs_install(NAME ${PROJECT_NAME}CMakeHelpers
   CONFIG install/CVSCommonCMakeHelpersConfig.cmake.in
   FILES_DEV
