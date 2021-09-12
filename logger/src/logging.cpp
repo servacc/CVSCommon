@@ -19,21 +19,21 @@ const std::string name_in_factory = "cvs.logger";
 
 namespace cvs::logger {
 
-static boost::property_tree::ptree& configurations(const std::string& name) {
-  static std::map<std::string, boost::property_tree::ptree> settings;
+static common::Properties& configurations(const std::string& name) {
+  static std::map<std::string, common::Properties> settings;
 
-  boost::property_tree::ptree& val = settings[name];
+  common::Properties& val = settings[name];
   if (val.empty())
     val.put("name", name);
   return val;
 }
 
-const boost::property_tree::ptree& loggerConfiguration(const std::string& name) { return configurations(name); }
-const boost::property_tree::ptree& loggerConfiguration(const LoggerPtr::element_type& logger) {
+const common::Properties& loggerConfiguration(const std::string& name) { return configurations(name); }
+const common::Properties& loggerConfiguration(const LoggerPtr::element_type& logger) {
   return loggerConfiguration(logger.name());
 }
 
-void configureLoggersList(const boost::property_tree::ptree& config) {
+void configureLoggersList(const common::Properties& config) {
   try {
     auto loggers_list = config.get_child_optional("loggers");
     if (loggers_list) {
@@ -78,10 +78,9 @@ void configureLogger(LoggerPtr::element_type& logger, const LoggerConfig& config
   }
 }
 
-void configureLogger(const boost::property_tree::ptree& config) {
+void configureLogger(const common::Properties& config) {
   try {
-    common::StaticFactory::create<LoggerPtr, std::string, const boost::property_tree::ptree&>(name_in_factory, config)
-        .value();
+    common::StaticFactory::create<LoggerPtr, std::string, const common::Properties&>(name_in_factory, config).value();
   }
   catch (...) {
     std::throw_with_nested(std::runtime_error(R"(Can't create and configure logger.)"));
@@ -92,9 +91,8 @@ common::CVSOutcome<LoggerPtr> createLogger(const std::string& name) {
   return common::StaticFactory::create<LoggerPtr, std::string, const std::string&>(name_in_factory, name);
 }
 
-common::CVSOutcome<LoggerPtr> createLogger(const boost::property_tree::ptree& config) {
-  return common::StaticFactory::create<LoggerPtr, std::string, const boost::property_tree::ptree&>(name_in_factory,
-                                                                                                   config);
+common::CVSOutcome<LoggerPtr> createLogger(const common::Properties& config) {
+  return common::StaticFactory::create<LoggerPtr, std::string, const common::Properties&>(name_in_factory, config);
 }
 
 void createDefaultLogger() {
@@ -102,7 +100,7 @@ void createDefaultLogger() {
   spdlog::set_default_logger(*default_logger);
 }
 
-void createDefaultLogger(const boost::property_tree::ptree& config) {
+void createDefaultLogger(const common::Properties& config) {
   auto default_logger = createLogger("");
   spdlog::set_default_logger(*default_logger);
 
@@ -120,8 +118,8 @@ void registerLoggersInFactory() {
     return logger;
   });
 
-  common::StaticFactory::registerType<LoggerPtr(const boost::property_tree::ptree&)>(
-      name_in_factory, [](const boost::property_tree::ptree& cfg) -> LoggerPtr {
+  common::StaticFactory::registerType<LoggerPtr(const common::Properties&)>(
+      name_in_factory, [](const common::Properties& cfg) -> LoggerPtr {
         auto cfg_struct_opt = LoggerConfig::make(cfg);
 
         auto logger_opt = common::StaticFactory::create<LoggerPtr, std::string, const std::string&>(
@@ -145,7 +143,7 @@ void initLoggers() {
   }
 }
 
-void initLoggers(const boost::property_tree::ptree& config) {
+void initLoggers(const common::Properties& config) {
   initLoggers();
 
   configureLoggersList(config);

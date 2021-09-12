@@ -24,7 +24,7 @@ TEST(CVSLoggerTest, opencv_cfg) {
 
   std::stringstream ss;
   ss << config_str;
-  boost::property_tree::ptree json;
+  cvs::common::Properties json;
 
   ASSERT_NO_THROW(boost::property_tree::read_json(ss, json));
 

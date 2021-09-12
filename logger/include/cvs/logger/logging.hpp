@@ -14,19 +14,19 @@ namespace cvs::logger {
 void registerLoggersInFactory();
 
 void createDefaultLogger();
-void createDefaultLogger(const boost::property_tree::ptree&);
+void createDefaultLogger(const common::Properties&);
 
 void initLoggers();
-void initLoggers(const boost::property_tree::ptree&);
+void initLoggers(const common::Properties&);
 
-const boost::property_tree::ptree& loggerConfiguration(const std::string&);
-const boost::property_tree::ptree& loggerConfiguration(const LoggerPtr::element_type&);
+const common::Properties& loggerConfiguration(const std::string&);
+const common::Properties& loggerConfiguration(const LoggerPtr::element_type&);
 
-void configureLoggersList(const boost::property_tree::ptree&);
-void configureLogger(const boost::property_tree::ptree&);
+void configureLoggersList(const common::Properties&);
+void configureLogger(const common::Properties&);
 
 common::CVSOutcome<LoggerPtr> createLogger(const std::string&);
-common::CVSOutcome<LoggerPtr> createLogger(const boost::property_tree::ptree&);
+common::CVSOutcome<LoggerPtr> createLogger(const common::Properties&);
 
 namespace detail {
 

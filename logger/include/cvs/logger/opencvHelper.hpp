@@ -34,10 +34,10 @@ struct ArgumentPreprocessor<cv::Mat> {
     CVS_FIELD_DEF(img_subfolder, bool, true, "Create subfolder on every startup.");
   };
 
-  static std::string exec(const LoggerPtr&                   logger,
-                          spdlog::level::level_enum          lvl,
-                          const boost::property_tree::ptree& ptree,
-                          const cv::Mat&                     arg) {
+  static std::string exec(const LoggerPtr&          logger,
+                          spdlog::level::level_enum lvl,
+                          const common::Properties& ptree,
+                          const cv::Mat&            arg) {
     try {
       auto config = Config::make(ptree).value();
 

@@ -21,7 +21,7 @@ TEST_P(DefaultLoggerTest, configure) {
 
   std::stringstream ss;
   ss << config_json;
-  boost::property_tree::ptree root;
+  cvs::common::Properties root;
 
   ASSERT_NO_THROW(boost::property_tree::read_json(ss, root));
 
@@ -54,7 +54,7 @@ TEST(LoggerTest, config_array) {
 
   std::stringstream ss;
   ss << config_json;
-  boost::property_tree::ptree root;
+  cvs::common::Properties root;
 
   ASSERT_NO_THROW(boost::property_tree::read_json(ss, root));
 
