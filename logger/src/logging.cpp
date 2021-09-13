@@ -38,7 +38,6 @@ void configureLoggersList(const common::Properties& config) {
     auto loggers_list = config.get_child_optional("loggers");
     if (loggers_list) {
       for (auto l : *loggers_list) {
-        auto cfg = LoggerConfig::make(l.second);
         configureLogger(l.second);
       }
     }
