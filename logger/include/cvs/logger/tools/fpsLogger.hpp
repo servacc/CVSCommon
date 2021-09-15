@@ -9,9 +9,7 @@
 
 namespace cvs::logger::tools {
 
-class FpsLogger : public Loggable<FpsLogger> {
-  class Private;
-
+class IFpsLogger : public Loggable<IFpsLogger> {
  public:
   using clock      = std::chrono::system_clock;
   using duration   = clock::duration;
@@ -22,35 +20,32 @@ class FpsLogger : public Loggable<FpsLogger> {
     std::size_t total_cnt;
   };
 
-  FpsLogger(std::string_view name = "cvs.logger.tools.fsplogger");
-  virtual ~FpsLogger();
+  static std::unique_ptr<IFpsLogger> make(std::string_view name            = "cvs.logger.tools.fsplogger",
+                                          double           ro              = 0.1,
+                                          duration         report_duration = std::chrono::minutes(10),
+                                          bool             autoreport      = true,
+                                          bool             thread_safe     = false);
 
-  void   setRo(double);
-  double ro() const;
+  IFpsLogger(std::string_view name);
+  virtual ~IFpsLogger() = default;
 
-  void            setReportDuration(duration);
-  const duration& reportDuration() const;
+  virtual double          ro() const             = 0;
+  virtual const duration& reportDuration() const = 0;
+  virtual bool            autoreport() const     = 0;
 
-  void setAutoreport(bool);
-  bool autoreport() const;
+  virtual double    fps() const     = 0;
+  virtual double    smmaFps() const = 0;
+  virtual double    lastFps() const = 0;
+  virtual TotalStat getStat() const = 0;
 
-  double    fps() const;
-  double    smmaFps() const;
-  double    lastFps() const;
-  TotalStat getStat() const;
-  void      setUseLock(bool use_lock = true);
+  virtual void start()         = 0;
+  virtual bool started() const = 0;
+  virtual void stop()          = 0;
 
-  void start();
-  bool started() const;
-  void stop();
+  virtual void newFrame(time_point frame_time = clock::now()) = 0;
+  virtual void clear()                                        = 0;
 
-  void newFrame(time_point frame_time = clock::now());
-  void clear();
-
-  std::size_t framesCount() const;
-
- private:
-  std::shared_ptr<Private> m;
+  virtual std::size_t framesCount() const = 0;
 };
 
 }  // namespace cvs::logger::tools
