@@ -43,13 +43,13 @@ target_sources(${PROJECT_NAME}
   PRIVATE
     include/cvs/logger/logging.hpp
     include/cvs/logger/loggable.hpp
-    include/cvs/logger/tools/fpsLogger.hpp
+    include/cvs/logger/tools/fpsCounter.hpp
     include/cvs/logger/argumentPreprocessor.hpp
     include/cvs/logger/loggerTypes.hpp
 
     include/cvs/logger/opencvHelper.hpp
 
-    src/tools/fpsLogger.cpp
+    src/tools/fpsCounter.cpp
     src/logging.cpp)
 
 target_link_libraries(${PROJECT_NAME}
@@ -96,7 +96,7 @@ cvs_install(NAME CVSLogger
           include/cvs/logger/loggerTypes.hpp
           ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/logger/export.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CVSCommon/cvs/logger/tools
-    FILES include/cvs/logger/tools/fpsLogger.hpp)
+    FILES include/cvs/logger/tools/fpsCounter.hpp)
 
 
 cvs_install(NAME CVSLoggerOpenCV

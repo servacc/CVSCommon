@@ -22,82 +22,78 @@ CVS_CONFIG(LoggerConfig, "Basic logger configuration.") {
 
 using LoggerPtr = std::shared_ptr<spdlog::logger>;
 
-namespace detail {
-
-class LevelTranslator {
- public:
-  using internal_type = std::string;
-  using external_type = spdlog::level::level_enum;
-
-  boost::optional<external_type> get_value(const internal_type& v) { return spdlog::level::from_str(v); }
-  boost::optional<internal_type> put_value(const external_type& v) {
-    return std::string(spdlog::level::to_string_view(v).data());
-  }
-};
-
-class SinkTranslator {
- public:
-  using internal_type = std::string;
-  using external_type = Sink;
-
-  inline static const std::string names[] = {"off", "std", "sysd"};
-
-  boost::optional<external_type> get_value(const internal_type& v) {
-    int sink = 0;
-    for (const auto& sink_str : names) {
-      if (sink_str == v)
-        return static_cast<Sink>(sink);
-      ++sink;
-    }
-    return Sink::NO_SINK;
-  }
-  boost::optional<internal_type> put_value(const external_type& v) { return names[v]; }
-};
-
-class TimeTypeTranslator {
- public:
-  using internal_type = std::string;
-  using external_type = spdlog::pattern_time_type;
-
-  inline static const std::string names[] = {"utc", "local"};
-
-  boost::optional<external_type> get_value(const internal_type& v) {
-    if (v == names[0])
-      return spdlog::pattern_time_type::utc;
-
-    if (v == names[1])
-      return spdlog::pattern_time_type::local;
-
-    return {};
-  }
-  boost::optional<internal_type> put_value(const external_type& v) {
-    switch (v) {
-      case spdlog::pattern_time_type::utc: return names[0];
-      case spdlog::pattern_time_type::local: return names[1];
-    }
-    return {};
-  }
-};
-
-}  // namespace detail
-
 }  // namespace cvs::logger
 
 namespace boost::property_tree {
 
 template <>
 struct translator_between<std::string, spdlog::level::level_enum> {
-  using type = cvs::logger::detail::LevelTranslator;
+  class LevelTranslator {
+   public:
+    using internal_type = std::string;
+    using external_type = spdlog::level::level_enum;
+
+    boost::optional<external_type> get_value(const internal_type& v) { return spdlog::level::from_str(v); }
+    boost::optional<internal_type> put_value(const external_type& v) {
+      return std::string(spdlog::level::to_string_view(v).data());
+    }
+  };
+
+  using type = LevelTranslator;
 };
 
 template <>
 struct translator_between<std::string, cvs::logger::Sink> {
-  using type = cvs::logger::detail::SinkTranslator;
+  class SinkTranslator {
+   public:
+    using internal_type = std::string;
+    using external_type = cvs::logger::Sink;
+
+    inline static const std::string names[] = {"off", "std", "sysd"};
+
+    boost::optional<external_type> get_value(const internal_type& v) {
+      int sink = 0;
+      for (const auto& sink_str : names) {
+        if (sink_str == v)
+          return static_cast<external_type>(sink);
+        ++sink;
+      }
+      return external_type::NO_SINK;
+    }
+    boost::optional<internal_type> put_value(const external_type& v) { return names[v]; }
+  };
+
+  using type = SinkTranslator;
 };
 
 template <>
 struct translator_between<std::string, spdlog::pattern_time_type> {
-  using type = cvs::logger::detail::TimeTypeTranslator;
+  class TimeTypeTranslator {
+   public:
+    using internal_type = std::string;
+    using external_type = spdlog::pattern_time_type;
+
+    inline static const std::string names[] = {"utc", "local"};
+
+    boost::optional<external_type> get_value(const internal_type& v) {
+      if (v == names[0])
+        return spdlog::pattern_time_type::utc;
+
+      if (v == names[1])
+        return spdlog::pattern_time_type::local;
+
+      return {};
+    }
+    boost::optional<internal_type> put_value(const external_type& v) {
+      switch (v) {
+        case spdlog::pattern_time_type::utc: return names[0];
+        case spdlog::pattern_time_type::local: return names[1];
+      }
+      return {};
+    }
+  };
+
+  using type = TimeTypeTranslator;
 };
 
 }  // namespace boost::property_tree
