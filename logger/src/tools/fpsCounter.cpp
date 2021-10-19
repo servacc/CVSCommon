@@ -40,23 +40,28 @@ class FPSCounter : public IFPSCounter {
       , functor(std::move(f)) {}
 
   void newFrame(time_point frame_time = clock::now()) {
-    std::unique_lock lock(update_mutex);
+    std::size_t frame_count_copy;
+    duration    total_duration_copy;
+    duration    last_frame_duration;
+    double      smma_fps_copy;
 
-    if (!started)
-      return;
+    {
+      std::unique_lock lock(update_mutex);
 
-    auto last_frame_duration = frame_time - last_frame_time;
-    total_duration += last_frame_duration;
-    ++frame_count;
+      if (!started)
+        return;
 
-    auto fps = frame_count / duration_cast<std::chrono::duration<double>>(total_duration).count();
-    smma_fps = (1 - ro) * smma_fps + ro * fps;
+      last_frame_duration = frame_time - last_frame_time;
+      total_duration += last_frame_duration;
+      ++frame_count;
 
-    auto frame_count_copy    = frame_count;
-    auto total_duration_copy = total_duration;
-    auto smma_fps_copy       = smma_fps;
+      auto fps = frame_count / duration_cast<std::chrono::duration<double>>(total_duration).count();
+      smma_fps = (1 - ro) * smma_fps + ro * fps;
 
-    lock.unlock();
+      frame_count_copy    = frame_count;
+      total_duration_copy = total_duration;
+      smma_fps_copy       = smma_fps;
+    }
 
     functor(frame_count_copy, total_duration_copy, last_frame_duration, smma_fps_copy);
   }
