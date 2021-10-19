@@ -1,8 +1,6 @@
-#include "../include/cvs/logger/tools/fpsLogger.hpp"
+#include "../include/cvs/logger/tools/fpsCounter.hpp"
 
 #include "../include/cvs/logger/logging.hpp"
-
-#include <fmt/chrono.h>
 
 #include <list>
 #include <shared_mutex>
