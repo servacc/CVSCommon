@@ -40,10 +40,10 @@ class FPSCounter : public IFPSCounter {
       , functor(std::move(f)) {}
 
   void newFrame(time_point frame_time = clock::now()) {
+    std::unique_lock lock(update_mutex);
+
     if (!started)
       return;
-
-    std::unique_lock lock(update_mutex);
 
     auto last_frame_duration = frame_time - last_frame_time;
     total_duration += last_frame_duration;
@@ -62,17 +62,19 @@ class FPSCounter : public IFPSCounter {
   }
 
   void start() {
-    bool expected = false;
-    if (started.compare_exchange_strong(expected, true)) {
-      last_frame_time = clock::now();
-    }
+    std::unique_lock lock(update_mutex);
+
+    started         = true;
+    last_frame_time = clock::now();
+    total_duration  = duration::zero();
+    frame_count     = 0;
+    smma_fps        = 0;
   }
 
   void stop() {
-    bool expected = true;
-    if (started.compare_exchange_strong(expected, false)) {
-      last_frame_time = clock::now();
-    }
+    std::unique_lock lock(update_mutex);
+
+    started = false;
   }
 
   std::pair<std::size_t, duration> frames() const {
@@ -81,10 +83,9 @@ class FPSCounter : public IFPSCounter {
   }
 
  private:
-  std::atomic_bool started = false;
-
   mutable std::conditional_t<ThreadSafe, std::shared_mutex, FakeMutex> update_mutex;
 
+  bool        started = false;
   time_point  last_frame_time;
   duration    total_duration;
   std::size_t frame_count = 0;
