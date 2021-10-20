@@ -1,5 +1,7 @@
 #pragma once
 
+namespace cvs {
+
 inline constexpr unsigned int @CVSVERSION_NAME@_VERSION_MAJOR = @CVSVERSION_MAJOR@;
 inline constexpr unsigned int @CVSVERSION_NAME@_VERSION_MINOR = @CVSVERSION_MINOR@;
 inline constexpr unsigned int @CVSVERSION_NAME@_VERSION_PATCH = @CVSVERSION_PATCH@;
@@ -7,3 +9,5 @@ inline constexpr unsigned int @CVSVERSION_NAME@_VERSION_PATCH = @CVSVERSION_PATC
 inline constexpr const char* @CVSVERSION_NAME@_VERSION = "@CVSVERSION_MAJOR@.@CVSVERSION_MINOR@.@CVSVERSION_PATCH@";
 
 inline constexpr const char* @CVSVERSION_NAME@_NAME = "@CVSVERSION_NAME@";
+
+}
