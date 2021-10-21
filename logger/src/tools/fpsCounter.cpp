@@ -108,10 +108,12 @@ template class FPSCounter<false>;
 
 namespace cvs::logger::tools {
 
-std::unique_ptr<IFPSCounter> IFPSCounter::make(const std::string& name, double ro, bool thread_safe) {
-  duration log_duration = std::chrono::seconds(5);
-  Functor  f;
-  auto     q = [log_duration, logger = cvs::logger::createLogger(name).value(),
+std::unique_ptr<IFPSCounter> IFPSCounter::make(const std::string& name,
+                                               duration           debug_duration,
+                                               double             ro,
+                                               bool               thread_safe) {
+  Functor f;
+  auto    q = [debug_duration, logger = cvs::logger::createLogger(name).value(),
             period_counter = std::make_unique<std::atomic_size_t>()](std::size_t frame, duration total_duration,
                                                                      duration last_frame_duration, double smma) {
     auto last_frame_fps = 1 / duration_cast<std::chrono::duration<double>>(last_frame_duration).count();
@@ -120,7 +122,7 @@ std::unique_ptr<IFPSCounter> IFPSCounter::make(const std::string& name, double r
     LOG_TRACE(logger, "Frame {}. Current FPS {:.2f}. SMMA FPS {:.2f}. Mean FPS {:.2f}", frame, last_frame_fps, smma,
               average_fps);
 
-    std::size_t period_number   = total_duration / log_duration;
+    std::size_t period_number   = total_duration / debug_duration;
     auto        expected_period = period_counter->load();
     if (period_number > expected_period && period_counter->compare_exchange_strong(expected_period, period_number)) {
       LOG_DEBUG(logger, "Frame {}. SMMA FPS {:.2f}. Mean FPS {:.2f}", frame, smma, average_fps);

@@ -15,7 +15,10 @@ class IFPSCounter {
 
   using Functor = std::function<void(std::size_t, duration, duration, double)>;
 
-  static std::unique_ptr<IFPSCounter> make(const std::string &name, double ro = 0.1, bool thread_safe = true);
+  static std::unique_ptr<IFPSCounter> make(const std::string &name,
+                                           duration           debug_duration = std::chrono::seconds(10),
+                                           double             ro             = 0.1,
+                                           bool               thread_safe    = true);
   static std::unique_ptr<IFPSCounter> make(double ro, Functor fun, bool thread_safe = true);
 
   virtual ~IFPSCounter() = default;
