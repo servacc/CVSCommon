@@ -2,7 +2,7 @@
 
 #include "../include/cvs/logger/logging.hpp"
 
-#include <list>
+#include <queue>
 #include <shared_mutex>
 
 namespace {
@@ -39,7 +39,12 @@ class FPSCounter : public IFPSCounter {
       : ro(r)
       , functor(std::move(f)) {}
 
-  void newFrame(time_point frame_time = clock::now()) {
+  void newFrame(time_point frame_time = clock::now()) override {
+    std::unique_lock lock(update_mutex);
+    start_points.push(frame_time);
+  }
+
+  void frameProcessed(time_point frame_time = clock::now()) override {
     std::size_t frame_count_copy;
     duration    total_duration_copy;
     duration    last_frame_duration;
@@ -48,12 +53,14 @@ class FPSCounter : public IFPSCounter {
     {
       std::unique_lock lock(update_mutex);
 
-      if (!started)
+      if (start_points.empty())
         return;
 
-      last_frame_duration = frame_time - last_frame_time;
+      last_frame_duration = frame_time - start_points.back();
       total_duration += last_frame_duration;
+
       ++frame_count;
+      start_points.pop();
 
       auto fps = frame_count / duration_cast<std::chrono::duration<double>>(total_duration).count();
       smma_fps = (1 - ro) * smma_fps + ro * fps;
@@ -66,32 +73,24 @@ class FPSCounter : public IFPSCounter {
     functor(frame_count_copy, total_duration_copy, last_frame_duration, smma_fps_copy);
   }
 
-  void start() {
+  void clear() override {
     std::unique_lock lock(update_mutex);
 
-    started         = true;
-    last_frame_time = clock::now();
-    total_duration  = duration::zero();
-    frame_count     = 0;
-    smma_fps        = 0;
+    total_duration = duration::zero();
+    frame_count    = 0;
+    smma_fps       = 0;
   }
 
-  void stop() {
-    std::unique_lock lock(update_mutex);
-
-    started = false;
-  }
-
-  std::pair<std::size_t, duration> frames() const {
+  std::tuple<std::size_t, duration, double> statistics() const override {
     std::shared_lock lock(update_mutex);
-    return {frame_count, total_duration};
+    return {frame_count, total_duration, smma_fps};
   }
 
  private:
   mutable std::conditional_t<ThreadSafe, std::shared_mutex, FakeMutex> update_mutex;
 
-  bool        started = false;
-  time_point  last_frame_time;
+  std::queue<time_point> start_points;
+
   duration    total_duration;
   std::size_t frame_count = 0;
 

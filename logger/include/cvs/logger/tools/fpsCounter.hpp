@@ -23,12 +23,12 @@ class IFPSCounter {
 
   virtual ~IFPSCounter() = default;
 
-  virtual void newFrame(time_point frame_time = clock::now()) = 0;
+  virtual void newFrame(time_point frame_time = clock::now())       = 0;
+  virtual void frameProcessed(time_point frame_time = clock::now()) = 0;
 
-  virtual void start() = 0;
-  virtual void stop()  = 0;
+  virtual void clear() = 0;
 
-  virtual std::pair<std::size_t, duration> frames() const = 0;
+  virtual std::tuple<std::size_t, duration, double> statistics() const = 0;
 };
 
 }  // namespace cvs::logger::tools
