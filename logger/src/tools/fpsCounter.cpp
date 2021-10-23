@@ -2,6 +2,9 @@
 
 #include "../include/cvs/logger/logging.hpp"
 
+#include <cvs/common/config.hpp>
+#include <fmt/chrono.h>
+
 #include <queue>
 #include <shared_mutex>
 
@@ -31,73 +34,87 @@ namespace cvs::logger::tools {
 template <bool ThreadSafe = true>
 class FPSCounter : public IFPSCounter {
  public:
-  using clock      = std::chrono::system_clock;
-  using duration   = clock::duration;
-  using time_point = clock::time_point;
+  using CounterClock     = std::chrono::system_clock;
+  using CounterDuration  = CounterClock::duration;
+  using CounterTimePoint = CounterClock::time_point;
 
-  FPSCounter(double r, Functor f)
+  FPSCounter(double r, ResultFunctor f)
       : ro(r)
       , functor(std::move(f)) {}
 
-  void newFrame(time_point frame_time = clock::now()) override {
+  void newFrame(CounterTimePoint frame_time = CounterClock::now()) override {
     std::unique_lock lock(update_mutex);
     start_points.push(frame_time);
   }
 
-  void frameProcessed(time_point frame_time = clock::now()) override {
-    std::size_t frame_count_copy;
-    duration    total_duration_copy;
-    duration    last_frame_duration;
-    double      smma_fps_copy;
+  void frameProcessed(CounterTimePoint frame_time = CounterClock::now()) override {
+    std::size_t frame_copy = 0;
+
+    std::optional<Statistics> result_fps;
+    std::optional<Statistics> result_latency;
 
     {
       std::unique_lock lock(update_mutex);
 
-      if (start_points.empty())
-        return;
+      if (frame_count == 0) {
+        prev_frame_time = frame_time;
+        total_frames    = CounterDuration::zero();
+      } else {
+        auto last_frame = frame_time - prev_frame_time;
+        prev_frame_time = frame_time;
+        auto cur_fps    = 1 / duration_cast<std::chrono::duration<double>>(last_frame).count();
+        smma_fps        = (1 - ro) * smma_fps + ro * cur_fps;
+        total_frames += last_frame;
+        result_fps = Statistics{last_frame, total_frames, smma_fps};
+      }
 
-      last_frame_duration = frame_time - start_points.back();
-      total_duration += last_frame_duration;
+      if (!start_points.empty()) {
+        auto last_latency = frame_time - start_points.back();
+        total_latency += last_latency;
 
-      ++frame_count;
-      start_points.pop();
+        ++frame_count;
+        start_points.pop();
 
-      auto fps = frame_count / duration_cast<std::chrono::duration<double>>(total_duration).count();
-      smma_fps = (1 - ro) * smma_fps + ro * fps;
+        smma_latency = (1 - ro) * smma_latency + ro * last_latency.count();
 
-      frame_count_copy    = frame_count;
-      total_duration_copy = total_duration;
-      smma_fps_copy       = smma_fps;
+        result_latency = Statistics{last_latency, total_latency, smma_latency};
+      }
+
+      frame_copy = frame_count;
     }
 
-    functor(frame_count_copy, total_duration_copy, last_frame_duration, smma_fps_copy);
+    functor(frame_copy, result_fps, result_latency);
   }
 
   void clear() override {
     std::unique_lock lock(update_mutex);
 
-    total_duration = duration::zero();
-    frame_count    = 0;
-    smma_fps       = 0;
+    total_latency = CounterDuration::zero();
+    frame_count   = 0;
+    smma_fps      = 0;
   }
 
-  std::tuple<std::size_t, duration, double> statistics() const override {
+  double statistics() const override {
     std::shared_lock lock(update_mutex);
-    return {frame_count, total_duration, smma_fps};
+    return {};
   }
 
  private:
   mutable std::conditional_t<ThreadSafe, std::shared_mutex, FakeMutex> update_mutex;
 
-  std::queue<time_point> start_points;
+  std::queue<CounterTimePoint> start_points;
 
-  duration    total_duration;
-  std::size_t frame_count = 0;
+  CounterTimePoint prev_frame_time;
+  CounterDuration  total_frames;
 
-  double       smma_fps = 0;
+  CounterDuration total_latency;
+  std::size_t     frame_count = 0;
+
+  double       smma_fps     = 0;
+  double       smma_latency = 0;
   const double ro;
 
-  Functor functor;
+  ResultFunctor functor;
 };
 
 template class FPSCounter<true>;
@@ -107,31 +124,45 @@ template class FPSCounter<false>;
 
 namespace cvs::logger::tools {
 
-std::unique_ptr<IFPSCounter> IFPSCounter::make(const std::string& name,
-                                               duration           debug_duration,
-                                               double             ro,
-                                               bool               thread_safe) {
-  Functor f;
-  auto    q = [debug_duration, logger = cvs::logger::createLogger(name).value(),
-            period_counter = std::make_unique<std::atomic_size_t>()](std::size_t frame, duration total_duration,
-                                                                     duration last_frame_duration, double smma) {
-    auto last_frame_fps = 1 / duration_cast<std::chrono::duration<double>>(last_frame_duration).count();
-    auto average_fps    = frame / duration_cast<std::chrono::duration<double>>(total_duration).count();
+IFPSCounterUPtr IFPSCounter::make(const std::string& name, std::size_t logged_frame, double ro, bool thread_safe) {
+  auto          logger         = cvs::logger::createLogger(name).value();
+  auto          period_counter = std::make_shared<std::atomic_size_t>();
+  ResultFunctor f = [logged_frame, logger, period_counter](std::size_t frame, std::optional<Statistics> fps,
+                                                           std::optional<Statistics> latency) {
+    if (fps) {
+      auto current_fps = 1 / duration_cast<std::chrono::duration<double>>(fps->last).count();
+      auto mean_fps    = frame / duration_cast<std::chrono::duration<double>>(fps->total).count();
 
-    LOG_TRACE(logger, "Frame {}. Current FPS {:.2f}. SMMA FPS {:.2f}. Mean FPS {:.2f}", frame, last_frame_fps, smma,
-              average_fps);
+      LOG_TRACE(logger, "FPS: frame {} current {:.2f} SMMA {:.2f} mean {:.2f}", frame, current_fps, fps->smma,
+                mean_fps);
 
-    std::size_t period_number   = total_duration / debug_duration;
-    auto        expected_period = period_counter->load();
-    if (period_number > expected_period && period_counter->compare_exchange_strong(expected_period, period_number)) {
-      LOG_DEBUG(logger, "Frame {}. SMMA FPS {:.2f}. Mean FPS {:.2f}", frame, smma, average_fps);
+      if (frame % logged_frame == 0) {
+        LOG_DEBUG(logger, "FPS: frame {} SMMA {:.2f} mean {:.2f}", frame, current_fps, fps->smma, mean_fps);
+      }
+    }
+
+    if (latency) {
+      auto                          mean_latency = latency->total / frame;
+      std::chrono::duration<double> smma(latency->smma / CounterDuration::period::den);
+
+      LOG_TRACE(logger, "Latency: frame {} current {} SMMA {} mean {}", frame,
+                std::chrono::duration_cast<std::chrono::milliseconds>(latency->last),
+                std::chrono::duration_cast<std::chrono::milliseconds>(smma),
+                std::chrono::duration_cast<std::chrono::milliseconds>(mean_latency));
+
+      if (frame % logged_frame == 0) {
+        LOG_DEBUG(logger, "Latency: frame {} SMMA {} mean {}", frame,
+                  std::chrono::duration_cast<std::chrono::milliseconds>(latency->last),
+                  std::chrono::duration_cast<std::chrono::milliseconds>(smma),
+                  std::chrono::duration_cast<std::chrono::milliseconds>(mean_latency));
+      }
     }
   };
 
   return make(ro, std::move(f), thread_safe);
 }
 
-std::unique_ptr<IFPSCounter> IFPSCounter::make(double ro, Functor fun, bool thread_safe) {
+IFPSCounterUPtr IFPSCounter::make(double ro, ResultFunctor fun, bool thread_safe) {
   if (thread_safe)
     return std::make_unique<FPSCounter<true>>(ro, std::move(fun));
   return std::make_unique<FPSCounter<false>>(ro, std::move(fun));
