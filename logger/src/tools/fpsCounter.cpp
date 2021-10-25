@@ -40,7 +40,9 @@ class FPSCounter : public IFPSCounter {
 
   FPSCounter(double r, ResultFunctor f)
       : ro(r)
-      , functor(std::move(f)) {}
+      , functor(std::move(f)) {
+    clear();
+  }
 
   void newFrame(CounterTimePoint frame_time = CounterClock::now()) override {
     std::unique_lock lock(update_mutex);
@@ -69,7 +71,7 @@ class FPSCounter : public IFPSCounter {
       }
 
       if (!start_points.empty()) {
-        auto last_latency = frame_time - start_points.back();
+        auto last_latency = frame_time - start_points.front();
         total_latency += last_latency;
 
         ++frame_count;
@@ -86,12 +88,14 @@ class FPSCounter : public IFPSCounter {
     functor(frame_copy, result_fps, result_latency);
   }
 
-  void clear() override {
+  void clear() override final {
     std::unique_lock lock(update_mutex);
 
+    total_frames  = CounterDuration::zero();
     total_latency = CounterDuration::zero();
     frame_count   = 0;
     smma_fps      = 0;
+    smma_latency  = 0;
   }
 
   double statistics() const override {
