@@ -11,6 +11,8 @@
 
 namespace cvs::common {
 
+using Properties = boost::property_tree::ptree;
+
 namespace detail {
 
 template <typename T>
@@ -24,8 +26,8 @@ struct is_vector<std::vector<T>> : public std::true_type {};
 struct CVSConfigBase {
   static constexpr auto no_default = nullptr;
 
-  static boost::property_tree::ptree load(const std::string&);
-  static boost::property_tree::ptree load(const std::filesystem::path&);
+  static Properties load(const std::string&);
+  static Properties load(const std::filesystem::path&);
 };
 
 template <typename ConfigType, typename Name, typename Description>
@@ -44,8 +46,8 @@ struct CVSConfig : public CVSConfigBase {
     virtual bool has_default() const = 0;
     virtual bool is_optional() const = 0;
 
-    virtual void        set(Self& b, const boost::property_tree::ptree& ptree) = 0;
-    virtual std::string describe(std::string_view prefix) const                = 0;
+    virtual void        set(Self& b, const Properties& ptree)   = 0;
+    virtual std::string describe(std::string_view prefix) const = 0;
   };
 
   // Simple field
@@ -60,7 +62,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return false; }
     bool is_optional() const override { return false; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       config.*pointer = ptree.get<T>(std::string(field_name_str::value, field_name_str::size));
     }
 
@@ -90,7 +92,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return true; }
     bool is_optional() const override { return false; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       config.*pointer = ptree.get(std::string(field_name_str::value, field_name_str::size), field_default_value);
     }
 
@@ -120,7 +122,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       auto val = ptree.get_optional<T>(std::string(field_name_str::value, field_name_str::size));
       if (val)
         config.*pointer = std::move(*val);
@@ -151,7 +153,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       auto           container = ptree.get_child(std::string(field_name_str::value, field_name_str::size));
       std::vector<T> values;
       for (auto& iter : container)
@@ -184,7 +186,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       auto container = ptree.get_child_optional(std::string(field_name_str::value, field_name_str::size));
       if (container) {
         std::vector<T> values;
@@ -220,7 +222,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return false; }
     bool is_optional() const override { return false; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       bool can_be_default = true;
       for (auto f : T::descriptors()) {
         if (!f->has_default() && !f->is_optional()) {
@@ -234,7 +236,7 @@ struct CVSConfig : public CVSConfigBase {
             iter != ptree.not_found()) {
           config.*pointer = T::make(iter->second).value();
         } else
-          config.*pointer = T::make(boost::property_tree::ptree{}).value();
+          config.*pointer = T::make(Properties{}).value();
       } else {
         config.*pointer = T::make(ptree.get_child(std::string(field_name_str::value, field_name_str::size))).value();
       }
@@ -267,7 +269,7 @@ struct CVSConfig : public CVSConfigBase {
     bool has_default() const override { return false; }
     bool is_optional() const override { return true; }
 
-    void set(Self& config, const boost::property_tree::ptree& ptree) override {
+    void set(Self& config, const Properties& ptree) override {
       if (auto iter = ptree.find(std::string(field_name_str::value, field_name_str::size)); iter != ptree.not_found()) {
         config.*pointer = T::make(iter->second).value();
       } else {
@@ -304,7 +306,7 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  static CVSOutcome<Self> make(const boost::property_tree::ptree& data) noexcept {
+  static CVSOutcome<Self> make(const Properties& data) noexcept {
     try {
       Self result;
       for (auto& field : descriptors()) {
@@ -380,14 +382,12 @@ namespace cvs::common {
 class Config {
  public:
   [[deprecated]] explicit Config() = default;
-  [[deprecated]] explicit Config(
-      const boost::property_tree::ptree&                                       tree,
-      std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt,
-      std::string                                                              name   = "");
+  [[deprecated]] explicit Config(const Properties&                                       tree,
+                                 std::optional<std::reference_wrapper<const Properties>> global = std::nullopt,
+                                 std::string                                             name   = "");
 
-  [[deprecated]] explicit Config(
-      const boost::property_tree::ptree::value_type&                           iterator,
-      std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global = std::nullopt);
+  [[deprecated]] explicit Config(const Properties::value_type&                           iterator,
+                                 std::optional<std::reference_wrapper<const Properties>> global = std::nullopt);
 
   [[deprecated]] static std::optional<Config> make(std::string&& file_content);
   [[deprecated]] static std::optional<Config> makeFromFile(const std::string& file_name);
@@ -418,12 +418,12 @@ class Config {
   [[nodiscard]] bool has_value() const;
 
  private:
-  void setGlobal(const boost::property_tree::ptree& global);
+  void setGlobal(const Properties& global);
 
  private:
-  boost::property_tree::ptree                                              tree_;
-  std::optional<std::reference_wrapper<const boost::property_tree::ptree>> global_;
-  std::string                                                              key_;
+  Properties                                              tree_;
+  std::optional<std::reference_wrapper<const Properties>> global_;
+  std::string                                             key_;
 };
 
 }  // namespace cvs::common

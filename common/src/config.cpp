@@ -4,15 +4,15 @@
 
 namespace cvs::common {
 
-boost::property_tree::ptree CVSConfigBase::load(const std::string &content) {
-  std::stringstream           ss(content);
-  boost::property_tree::ptree root;
+Properties CVSConfigBase::load(const std::string &content) {
+  std::stringstream ss(content);
+  Properties        root;
   boost::property_tree::read_json(ss, root);
   return root;
 }
 
-boost::property_tree::ptree CVSConfigBase::load(const std::filesystem::path &filename) {
-  boost::property_tree::ptree root;
+Properties CVSConfigBase::load(const std::filesystem::path &filename) {
+  Properties root;
   boost::property_tree::read_json(filename, root);
   return root;
 }
@@ -22,7 +22,7 @@ boost::property_tree::ptree CVSConfigBase::load(const std::filesystem::path &fil
 namespace cvs::common {
 
 std::optional<Config> Config::makeFromFile(const std::string &file_name) {
-  boost::property_tree::ptree root;
+  Properties root;
   try {
     boost::property_tree::read_json(file_name, root);
   }
@@ -37,7 +37,7 @@ std::optional<Config> Config::makeFromFile(const std::string &file_name) {
 std::optional<Config> Config::make(std::string &&file_content) {
   std::stringstream ss;
   ss << file_content;
-  boost::property_tree::ptree root;
+  Properties root;
 
   try {
     boost::property_tree::read_json(ss, root);
@@ -55,15 +55,14 @@ std::optional<Config> Config::make(std::string &&file_content) {
   return Config(root);
 }
 
-Config::Config(const boost::property_tree::ptree &                                             tree,
-               const std::optional<std::reference_wrapper<const boost::property_tree::ptree> > global,
-               std::string                                                                     name)
+Config::Config(const Properties &                                             tree,
+               const std::optional<std::reference_wrapper<const Properties> > global,
+               std::string                                                    name)
     : tree_(tree)
     , global_(global)
     , key_(std::move(name)) {}
 
-Config::Config(const boost::property_tree::ptree::value_type &                           iterator,
-               std::optional<std::reference_wrapper<const boost::property_tree::ptree> > global)
+Config::Config(const Properties::value_type &iterator, std::optional<std::reference_wrapper<const Properties> > global)
     : tree_(iterator.second)
     , global_(global)
     , key_(iterator.first) {}
@@ -103,6 +102,6 @@ std::string_view Config::getName() const { return key_; }
 
 bool Config::has_value() const { return !key_.empty(); }
 
-void Config::setGlobal(const boost::property_tree::ptree &global) { global_ = global; }
+void Config::setGlobal(const Properties &global) { global_ = global; }
 
 }  // namespace cvs::common

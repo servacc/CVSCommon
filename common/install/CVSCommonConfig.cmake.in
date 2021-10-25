@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Boost)
+find_dependency(fmt)
+
+include ("${CMAKE_CURRENT_LIST_DIR}/CVS@PROJECT_NAME@Targets.cmake")
