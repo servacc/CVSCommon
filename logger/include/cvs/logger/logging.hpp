@@ -41,28 +41,27 @@ void logHelper(const LoggerPtr& logger, spdlog::level::level_enum lvl, spdlog::s
 
 }  // namespace cvs::logger
 
-
 #define CVSCOMMON_LOG_HELPER_MACRO_INNER(LL, CH, ...) \
-  if (CH && CH->should_log(LL)) \
+  if (CH && CH->should_log(LL))                       \
     cvs::logger::detail::logHelper(CH, LL, __VA_ARGS__);
 
 #define LOG_TRACE(CH, ...) CVSCOMMON_LOG_HELPER_MACRO_INNER(spdlog::level::trace, CH, __VA_ARGS__)
-#define LOG_TRACE_L(...) LOG_TRACE(logger(), __VA_ARGS__)
+#define LOG_TRACE_L(...)   LOG_TRACE(logger(), __VA_ARGS__)
 
 #define LOG_DEBUG(CH, ...) CVSCOMMON_LOG_HELPER_MACRO_INNER(spdlog::level::debug, CH, __VA_ARGS__)
-#define LOG_DEBUG_L(...) LOG_DEBUG(logger(), __VA_ARGS__)
+#define LOG_DEBUG_L(...)   LOG_DEBUG(logger(), __VA_ARGS__)
 
 #define LOG_INFO(CH, ...) CVSCOMMON_LOG_HELPER_MACRO_INNER(spdlog::level::info, CH, __VA_ARGS__)
-#define LOG_INFO_L(...) LOG_INFO(logger(), __VA_ARGS__)
+#define LOG_INFO_L(...)   LOG_INFO(logger(), __VA_ARGS__)
 
 #define LOG_WARN(CH, ...) CVSCOMMON_LOG_HELPER_MACRO_INNER(spdlog::level::warn, CH, __VA_ARGS__)
-#define LOG_WARN_L(...) LOG_WARN(logger(), __VA_ARGS__)
+#define LOG_WARN_L(...)   LOG_WARN(logger(), __VA_ARGS__)
 
 #define LOG_ERROR(CH, ...) CVSCOMMON_LOG_HELPER_MACRO_INNER(spdlog::level::err, CH, __VA_ARGS__)
-#define LOG_ERROR_L(...) LOG_ERROR(logger(), __VA_ARGS__)
+#define LOG_ERROR_L(...)   LOG_ERROR(logger(), __VA_ARGS__)
 
 #define LOG_CRITICAL(CH, ...) CVSCOMMON_LOG_HELPER_MACRO_INNER(spdlog::level::critical, CH, __VA_ARGS__)
-#define LOG_CRITICAL_L(...) LOG_CRITICAL(logger(), __VA_ARGS__)
+#define LOG_CRITICAL_L(...)   LOG_CRITICAL(logger(), __VA_ARGS__)
 
 #define LOG_GLOB_TRACE(...)                                                        \
   if (auto l = spdlog::default_logger(); l && l->should_log(spdlog::level::trace)) \
