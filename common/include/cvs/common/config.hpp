@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/core/demangle.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <cvs/common/constexprString.hpp>
 #include <cvs/common/general.hpp>
@@ -31,12 +32,12 @@ struct CVSConfigBase {
   static Properties load(const std::filesystem::path&);
 };
 
-template <typename ConfigType, typename Name, typename Description>
+template <typename ConfigType, typename Description>
 struct CVSConfig : public CVSConfigBase {
   using Self = ConfigType;
 
   struct BaseFieldDescriptor {
-    static constexpr const char* description_format = "{}{: <10} {: <10} {: <9} {: <10} Description: {}";
+    static constexpr const char* description_format = "{: <10} {: <10} {: <9} {: <10} Description: {}";
 
     static constexpr const char* optional_str = "Optional";
     static constexpr const char* default_str  = "Default: ";
@@ -47,8 +48,8 @@ struct CVSConfig : public CVSConfigBase {
     virtual bool has_default() const = 0;
     virtual bool is_optional() const = 0;
 
-    virtual void        set(Self& b, const Properties& ptree)   = 0;
-    virtual std::string describe(std::string_view prefix) const = 0;
+    virtual void                     set(Self& b, const Properties& ptree) = 0;
+    virtual std::vector<std::string> describe() const                      = 0;
   };
 
   // Simple field
@@ -67,11 +68,11 @@ struct CVSConfig : public CVSConfigBase {
       config.*pointer = ptree.get<T>(std::string(field_name_str::value, field_name_str::size));
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(BaseFieldDescriptor::description_format, prefix,
-                         std::string(field_name_str::value, field_name_str::size),
-                         std::string(field_base_type_str::value, field_base_type_str::size), "", "",
-                         std::string(field_description::value, field_description::size));
+    std::vector<std::string> describe() const override {
+      return {fmt::format(BaseFieldDescriptor::description_format,
+                          std::string(field_name_str::value, field_name_str::size),
+                          std::string(field_base_type_str::value, field_base_type_str::size), "", "",
+                          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -97,11 +98,11 @@ struct CVSConfig : public CVSConfigBase {
       config.*pointer = ptree.get(std::string(field_name_str::value, field_name_str::size), field_default_value);
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(
-          BaseFieldDescriptor::description_format, prefix, std::string(field_name_str::value, field_name_str::size),
+    std::vector<std::string> describe() const override {
+      return {fmt::format(
+          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
           std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::default_str,
-          field_default_value, std::string(field_description::value, field_description::size));
+          field_default_value, std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -129,11 +130,11 @@ struct CVSConfig : public CVSConfigBase {
         config.*pointer = std::move(*val);
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(
-          BaseFieldDescriptor::description_format, prefix, std::string(field_name_str::value, field_name_str::size),
+    std::vector<std::string> describe() const override {
+      return {fmt::format(
+          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
           std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
-          std::string(field_description::value, field_description::size));
+          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -162,11 +163,11 @@ struct CVSConfig : public CVSConfigBase {
       config.*pointer = std::move(values);
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(BaseFieldDescriptor::description_format, prefix,
-                         std::string(field_name_str::value, field_name_str::size),
-                         std::string(field_base_type_str::value, field_base_type_str::size), "", "",
-                         std::string(field_description::value, field_description::size));
+    std::vector<std::string> describe() const override {
+      return {fmt::format(BaseFieldDescriptor::description_format,
+                          std::string(field_name_str::value, field_name_str::size),
+                          std::string(field_base_type_str::value, field_base_type_str::size), "", "",
+                          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -198,11 +199,11 @@ struct CVSConfig : public CVSConfigBase {
         config.*pointer = std::nullopt;
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(
-          BaseFieldDescriptor::description_format, prefix, std::string(field_name_str::value, field_name_str::size),
+    std::vector<std::string> describe() const override {
+      return {fmt::format(
+          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
           std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
-          std::string(field_description::value, field_description::size));
+          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -243,13 +244,21 @@ struct CVSConfig : public CVSConfigBase {
       }
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(BaseFieldDescriptor::description_format, prefix,
-                         std::string(field_name_str::value, field_name_str::size),
-                         std::string(field_base_type_str::value, field_base_type_str::size), "", "",
-                         std::string(field_description::value, field_description::size)) +
-             fmt::format("\n{}{} fields:{}", prefix, std::string(field_name_str::value, field_name_str::size),
-                         T::describeFields("\n" + std::string{prefix} + " "));
+    std::vector<std::string> describe() const override {
+      std::vector<std::string> result;
+
+      result.push_back(fmt::format(BaseFieldDescriptor::description_format,
+                                   std::string(field_name_str::value, field_name_str::size),
+                                   std::string(field_base_type_str::value, field_base_type_str::size), "", "",
+                                   std::string(field_description::value, field_description::size)));
+
+      auto fields = T::describeFields();
+      if (!fields.empty()) {
+        result.push_back("fields:\n" + fields.front());
+        std::transform(std::next(fields.begin()), fields.end(), std::back_inserter(result),
+                       [](const std::string& str) { return std::string(7, ' ') + str; });
+      }
+      return result;
     }
   };
 
@@ -278,14 +287,21 @@ struct CVSConfig : public CVSConfigBase {
       }
     }
 
-    std::string describe(std::string_view prefix) const override {
-      return fmt::format(BaseFieldDescriptor::description_format, prefix,
-                         std::string(field_name_str::value, field_name_str::size),
-                         std::string(field_base_type_str::value, field_base_type_str::size),
-                         BaseFieldDescriptor::optional_str, "",
-                         std::string(field_description::value, field_description::size)) +
-             fmt::format("\n{}{} fields:{}", prefix, std::string(field_name_str::value, field_name_str::size),
-                         T::describeFields("\n" + std::string{prefix} + " "));
+    std::vector<std::string> describe() const override {
+      std::vector<std::string> result;
+      result.push_back(fmt::format(
+          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
+          std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
+          std::string(field_description::value, field_description::size)));
+
+      auto fields = T::describeFields();
+      if (!fields.empty()) {
+        result.push_back("fields:\n" + fields.front());
+        std::transform(std::next(fields.begin()), fields.end(), std::back_inserter(result),
+                       [](const std::string& str) { return std::string(7, ' ') + str; });
+      }
+
+      return result;
     }
   };
 
@@ -317,21 +333,21 @@ struct CVSConfig : public CVSConfigBase {
     }
     catch (...) {
       CVS_RETURN_WITH_NESTED(
-          std::runtime_error(fmt::format("Can't init config {}", std::string(Name::value, Name::size))))
+          std::runtime_error(fmt::format("Can't init config {}", boost::core::demangle(typeid(ConfigType).name()))))
     }
   }
 
-  static std::string describe() {
-    std::string result = fmt::format("{}\nDescription: {}\nFields:", std::string(Name::value, Name::size),
-                                     std::string(Description::value, Description::size));
-    result += describeFields("\n");
-    return result;
+  static std::vector<std::string> describe() {
+    //    std::string result = fmt::format("Description: {}\nFields:", std::string{Description::value,
+    //    Description::size}); result += describeFields("\n"); return result;
+    return {};
   }
 
-  static std::string describeFields(std::string_view prefix) {
-    std::string result;
-    for (auto& f : descriptors()) {
-      result += prefix.data() + f->describe(" ");
+  static std::vector<std::string> describeFields() {
+    std::vector<std::string> result;
+    for (auto& d : descriptors()) {
+      auto fields = d->describe();
+      std::move(fields.begin(), fields.end(), std::back_inserter(result));
     }
     return result;
   }
@@ -341,15 +357,6 @@ struct CVSConfig : public CVSConfigBase {
     return descriptors_list;
   }
 };
-
-namespace detail {
-
-template <typename T, typename Name, typename Description>
-static constexpr auto getCVSConfigType(const T*, const Name&, const Description&) {
-  return cvs::common::CVSConfig<T, Name, Description>{};
-}
-
-}  // namespace detail
 
 }  // namespace cvs::common
 
@@ -371,4 +378,4 @@ static constexpr auto getCVSConfigType(const T*, const Name&, const Description&
   CVS_FIELD_BASE(field_name, std::optional<field_type>, field_type, field_description)
 
 #define CVS_CONFIG(name, description) \
-  struct name : public cvs::common::CVSConfig<name, CVS_CONSTEXPRSTRING(#name), CVS_CONSTEXPRSTRING(description)>
+  struct name : public cvs::common::CVSConfig<name, CVS_CONSTEXPRSTRING(description)>
