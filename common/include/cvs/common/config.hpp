@@ -465,24 +465,38 @@ struct CVSConfig : public CVSConfigBase {
 
   static CVSOutcome<Self> make(const Properties& data) noexcept {
     try {
+      auto values = parse(data).value();
       Self result;
-      for (auto& field : descriptors()) {
-        field->set(result, data);
-      }
+      for (auto& v : values)
+        v(result);
+
       return result;
     }
     catch (...) {
       CVS_RETURN_WITH_NESTED(
-          std::runtime_error(fmt::format("Can't init config {}", boost::core::demangle(typeid(ConfigType).name()))))
+          std::runtime_error(fmt::format("Can't init {}", boost::core::demangle(typeid(ConfigType).name()))))
+    }
+  }
+
+  static std::unique_ptr<Self> makeUPtr(const Properties& data) noexcept {
+    try {
+      auto values = parse(data).value();
+      auto result = std::make_unique<Self>();
+      for (auto& v : values)
+        v(*result);
+
+      return result;
+    }
+    catch (...) {
+      throwWithNested<std::runtime_error>("Can't create uptr {}", boost::core::demangle(typeid(ConfigType).name()));
     }
   }
 
   static CVSOutcome<std::vector<ValueHolder>> parse(const Properties& data) {
     try {
       std::vector<ValueHolder> result;
-      for (auto& field : descriptors()) {
+      for (auto& field : descriptors())
         result.push_back(field->getValueHolder(data));
-      }
       return result;
     }
     catch (...) {
