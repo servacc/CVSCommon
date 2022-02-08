@@ -29,7 +29,6 @@ target_sources(${PROJECT_NAME}
     include/cvs/common/constexprString.hpp
     include/cvs/common/general.hpp
     include/cvs/common/config.hpp
-    include/cvs/common/configbase.hpp
     include/cvs/common/staticFactory.hpp
     include/cvs/common/factory.hpp
 
@@ -55,7 +54,6 @@ cvs_install(NAME CVSCommon
     FILES include/cvs/common/constexprString.hpp
           include/cvs/common/general.hpp
           include/cvs/common/config.hpp
-          include/cvs/common/configbase.hpp
           include/cvs/common/staticFactory.hpp
           include/cvs/common/factory.hpp
           ${CMAKE_CURRENT_BINARY_DIR}/export/cvs/common/export.hpp
