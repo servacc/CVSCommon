@@ -30,7 +30,23 @@ struct CVSConfigBase {
 
   static Properties load(const std::string&);
   static Properties load(const std::filesystem::path&);
+
+  struct IFieldDescriptor {
+    virtual ~IFieldDescriptor() = default;
+
+    virtual std::string_view           name() const         = 0;
+    virtual std::string_view           description() const  = 0;
+    virtual std::string_view           type() const         = 0;
+    virtual std::optional<std::string> defaultValue() const = 0;
+    virtual bool                       isOptional() const   = 0;
+
+    virtual std::list<const IFieldDescriptor*> nestedFields() const = 0;
+
+    std::string descriptionString(std::string prefix = std::string(3ul, ' ')) const;
+  };
 };
+
+using ICVSField = CVSConfigBase::IFieldDescriptor;
 
 template <typename ConfigType, typename Description>
 struct CVSConfig : public CVSConfigBase {
@@ -38,27 +54,16 @@ struct CVSConfig : public CVSConfigBase {
 
   using ValueHolder = std::function<void(Self&)>;
 
-  struct BaseFieldDescriptor {
-    static constexpr const char* description_format = "{: <10} {: <10} {: <9} {: <10} Description: {}";
-
-    static constexpr const char* optional_str = "Optional";
-    static constexpr const char* default_str  = "Default: ";
-
+  struct BaseFieldDescriptor : public IFieldDescriptor {
     BaseFieldDescriptor() { Self::descriptors().push_back(this); }
     virtual ~BaseFieldDescriptor() = default;
 
-    virtual bool has_default() const = 0;
-    virtual bool is_optional() const = 0;
+    std::optional<std::string> defaultValue() const override { return std::nullopt; }
+    bool                       isOptional() const override { return false; }
 
-    virtual std::string_view name() const         = 0;
-    virtual std::string_view description() const  = 0;
-    virtual std::string_view type() const         = 0;
-    virtual std::string      defaultValue() const = 0;
+    std::list<const IFieldDescriptor*> nestedFields() const override { return {}; }
 
     virtual ValueHolder getValueHolder(const Properties&) const { return nullptr; }
-
-    virtual void                     set(Self& b, const Properties& ptree) = 0;
-    virtual std::vector<std::string> describe() const                      = 0;
   };
 
   // Simple field
@@ -70,9 +75,6 @@ struct CVSConfig : public CVSConfigBase {
             auto&    field_default_value = no_default,
             typename                     = void>
   struct FieldDescriptor : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return false; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -80,21 +82,9 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return {}; }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       return [value = ptree.get<T>(std::string{name()})](Self& obj) { obj.*pointer = std::move(value); };
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      config.*pointer = ptree.get<T>(std::string(field_name_str::value, field_name_str::size));
-    }
-
-    std::vector<std::string> describe() const override {
-      return {fmt::format(BaseFieldDescriptor::description_format,
-                          std::string(field_name_str::value, field_name_str::size),
-                          std::string(field_base_type_str::value, field_base_type_str::size), "", "",
-                          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -113,9 +103,6 @@ struct CVSConfig : public CVSConfigBase {
                          field_default_value,
                          std::enable_if_t<std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T>>>
       : public BaseFieldDescriptor {
-    bool has_default() const override { return true; }
-    bool is_optional() const override { return false; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -123,22 +110,11 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return fmt::format("{}", field_default_value); }
+    std::optional<std::string> defaultValue() const override { return fmt::format("{}", field_default_value); }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       return
           [value = ptree.get(std::string{name()}, field_default_value)](Self& obj) { obj.*pointer = std::move(value); };
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      config.*pointer = ptree.get(std::string(field_name_str::value, field_name_str::size), field_default_value);
-    }
-
-    std::vector<std::string> describe() const override {
-      return {fmt::format(
-          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
-          std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::default_str,
-          field_default_value, std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -157,9 +133,6 @@ struct CVSConfig : public CVSConfigBase {
                          field_default_value,
                          std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T> && !detail::is_vector<T>::value>>
       : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -167,7 +140,7 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return {}; }
+    bool isOptional() const override { return true; }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       return [val = ptree.get_optional<T>(std::string{name()})](Self& obj) {
@@ -176,19 +149,6 @@ struct CVSConfig : public CVSConfigBase {
         else
           obj.*pointer = std::nullopt;
       };
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      auto val = ptree.get_optional<T>(std::string(field_name_str::value, field_name_str::size));
-      if (val)
-        config.*pointer = std::move(*val);
-    }
-
-    std::vector<std::string> describe() const override {
-      return {fmt::format(
-          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
-          std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
-          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -206,9 +166,6 @@ struct CVSConfig : public CVSConfigBase {
                          pointer,
                          field_default_value,
                          std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -216,7 +173,6 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return {}; }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       auto           container = ptree.get_child(std::string(field_name_str::value, field_name_str::size));
@@ -225,21 +181,6 @@ struct CVSConfig : public CVSConfigBase {
         values.push_back(iter.second.get_value<T>());
 
       return [v = std::move(values)](Self& obj) { obj.*pointer = std::move(v); };
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      auto           container = ptree.get_child(std::string(field_name_str::value, field_name_str::size));
-      std::vector<T> values;
-      for (auto& iter : container)
-        values.push_back(iter.second.get_value<T>());
-      config.*pointer = std::move(values);
-    }
-
-    std::vector<std::string> describe() const override {
-      return {fmt::format(BaseFieldDescriptor::description_format,
-                          std::string(field_name_str::value, field_name_str::size),
-                          std::string(field_base_type_str::value, field_base_type_str::size), "", "",
-                          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -257,9 +198,6 @@ struct CVSConfig : public CVSConfigBase {
                          pointer,
                          field_default_value,
                          std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -267,7 +205,7 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return {}; }
+    bool isOptional() const override { return true; }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       auto container = ptree.get_child_optional(std::string(field_name_str::value, field_name_str::size));
@@ -279,24 +217,6 @@ struct CVSConfig : public CVSConfigBase {
       }
 
       return [](Self& obj) { obj.*pointer = std::nullopt; };
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      auto container = ptree.get_child_optional(std::string(field_name_str::value, field_name_str::size));
-      if (container) {
-        std::vector<T> values;
-        for (auto& iter : *container)
-          values.push_back(iter.second.get_value<T>());
-        config.*pointer = std::move(values);
-      } else
-        config.*pointer = std::nullopt;
-    }
-
-    std::vector<std::string> describe() const override {
-      return {fmt::format(
-          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
-          std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
-          std::string(field_description::value, field_description::size))};
     }
   };
 
@@ -314,9 +234,6 @@ struct CVSConfig : public CVSConfigBase {
                          pointer,
                          field_default_value,
                          std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return false; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -324,7 +241,8 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return {}; }
+
+    std::list<const IFieldDescriptor*> nestedFields() const override { return T::fields(); }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       std::vector<ValueHolder> holders;
@@ -340,43 +258,6 @@ struct CVSConfig : public CVSConfigBase {
             v(obj.*pointer);
         };
       }
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      bool can_be_default = true;
-      for (auto f : T::descriptors()) {
-        if (!f->has_default() && !f->is_optional()) {
-          can_be_default = false;
-          break;
-        }
-      }
-
-      if (can_be_default) {
-        if (auto iter = ptree.find(std::string(field_name_str::value, field_name_str::size));
-            iter != ptree.not_found()) {
-          config.*pointer = T::make(iter->second).value();
-        } else
-          config.*pointer = T::make(Properties{}).value();
-      } else {
-        config.*pointer = T::make(ptree.get_child(std::string(field_name_str::value, field_name_str::size))).value();
-      }
-    }
-
-    std::vector<std::string> describe() const override {
-      std::vector<std::string> result;
-
-      result.push_back(fmt::format(BaseFieldDescriptor::description_format,
-                                   std::string(field_name_str::value, field_name_str::size),
-                                   std::string(field_base_type_str::value, field_base_type_str::size), "", "",
-                                   std::string(field_description::value, field_description::size)));
-
-      auto fields = T::describeFields();
-      if (!fields.empty()) {
-        result.push_back("fields:\n" + fields.front());
-        std::transform(std::next(fields.begin()), fields.end(), std::back_inserter(result),
-                       [](const std::string& str) { return std::string(7, ' ') + str; });
-      }
-      return result;
     }
   };
 
@@ -394,9 +275,6 @@ struct CVSConfig : public CVSConfigBase {
                          pointer,
                          field_default_value,
                          std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
-
     std::string_view name() const override { return std::string_view{field_name_str::value, field_name_str::size}; }
     std::string_view description() const override {
       return std::string_view{field_description::value, field_description::size};
@@ -404,7 +282,9 @@ struct CVSConfig : public CVSConfigBase {
     std::string_view type() const override {
       return std::string_view{field_base_type_str::value, field_base_type_str::size};
     }
-    std::string defaultValue() const override { return {}; }
+    bool isOptional() const override { return true; }
+
+    std::list<const IFieldDescriptor*> nestedFields() const override { return T::fields(); }
 
     ValueHolder getValueHolder(const Properties& ptree) const override {
       if (auto iter = ptree.find(std::string(field_name_str::value, field_name_str::size)); iter != ptree.not_found()) {
@@ -417,31 +297,6 @@ struct CVSConfig : public CVSConfigBase {
       }
 
       return [](Self& obj) { obj.*pointer = std::nullopt; };
-    }
-
-    void set(Self& config, const Properties& ptree) override {
-      if (auto iter = ptree.find(std::string(field_name_str::value, field_name_str::size)); iter != ptree.not_found()) {
-        config.*pointer = T::make(iter->second).value();
-      } else {
-        config.*pointer = std::nullopt;
-      }
-    }
-
-    std::vector<std::string> describe() const override {
-      std::vector<std::string> result;
-      result.push_back(fmt::format(
-          BaseFieldDescriptor::description_format, std::string(field_name_str::value, field_name_str::size),
-          std::string(field_base_type_str::value, field_base_type_str::size), BaseFieldDescriptor::optional_str, "",
-          std::string(field_description::value, field_description::size)));
-
-      auto fields = T::describeFields();
-      if (!fields.empty()) {
-        result.push_back("fields:\n" + fields.front());
-        std::transform(std::next(fields.begin()), fields.end(), std::back_inserter(result),
-                       [](const std::string& str) { return std::string(7, ' ') + str; });
-      }
-
-      return result;
     }
   };
 
@@ -478,7 +333,26 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  static std::unique_ptr<Self> makeUPtr(const Properties& data) noexcept {
+  static std::unique_ptr<Self> makeUPtr(const std::string& content) {
+    try {
+      return makeUPtr(load(content));
+    }
+    catch (...) {
+      throwWithNested<std::runtime_error>(std::runtime_error("Can't parse config from text."));
+    }
+  }
+
+  static std::unique_ptr<Self> makeUPtr(const std::filesystem::path& filename) {
+    try {
+      return makeUPtr(load(filename));
+    }
+    catch (...) {
+      throwWithNested<std::runtime_error>(
+          std::runtime_error(fmt::format("Can't parse config from file {}.", filename)));
+    }
+  }
+
+  static std::unique_ptr<Self> makeUPtr(const Properties& data) {
     try {
       auto values = parse(data).value();
       auto result = std::make_unique<Self>();
@@ -492,7 +366,7 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  static CVSOutcome<std::vector<ValueHolder>> parse(const Properties& data) {
+  static CVSOutcome<std::vector<ValueHolder>> parse(const Properties& data) noexcept {
     try {
       std::vector<ValueHolder> result;
       for (auto& field : descriptors())
@@ -505,21 +379,23 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  static std::vector<std::string> describe() {
-    //    std::string result = fmt::format("Description: {}\nFields:", std::string{Description::value,
-    //    Description::size}); result += describeFields("\n"); return result;
-    return {};
-  }
-
-  static std::vector<std::string> describeFields() {
-    std::vector<std::string> result;
-    for (auto& d : descriptors()) {
-      auto fields = d->describe();
-      std::move(fields.begin(), fields.end(), std::back_inserter(result));
+  static std::string describe() {
+    std::string result = fmt::format("Description: {}\nFields:", std::string{description()});
+    for (auto f : fields()) {
+      result += '\n' + f->descriptionString();
     }
     return result;
   }
 
+  static std::string_view            description() { return std::string_view{Description::value, Description::size}; }
+  static std::list<const ICVSField*> fields() {
+    std::list<const ICVSField*> result;
+    for (auto f : descriptors())
+      result.push_back(f);
+    return result;
+  }
+
+ protected:
   static std::list<BaseFieldDescriptor*>& descriptors() {
     static std::list<BaseFieldDescriptor*> descriptors_list;
     return descriptors_list;

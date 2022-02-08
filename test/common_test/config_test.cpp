@@ -39,10 +39,15 @@ CVS_CONFIG(ArrayConfig, "Array config 0") {
 };
 
 TEST(ConfigTest, help) {
-  auto description0 = TestConfig::describe();
-  auto description1 = ArrayConfig::describe();
-  ASSERT_FALSE(description0.empty());
-  std::cout << description0 << std::endl << std::endl << description1 << std::endl;
+  auto description0 = TestConfig::fields();
+  EXPECT_FALSE(description0.empty());
+
+  std::cout << TestConfig::describe() << std::endl;
+
+  auto description1 = ArrayConfig::fields();
+  EXPECT_FALSE(description1.empty());
+
+  std::cout << ArrayConfig::describe() << std::endl;
 }
 
 TEST(ConfigTest, parsing) {
