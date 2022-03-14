@@ -27,8 +27,9 @@ struct is_vector<std::vector<T>> : public std::true_type {};
 struct CVSConfigBase {
   static constexpr auto no_default = nullptr;
 
-  static Properties load(const std::string&);
-  static Properties load(const std::filesystem::path&);
+  static CVSOutcome<Properties> load(std::istream&);
+  static CVSOutcome<Properties> load(const std::string&);
+  static CVSOutcome<Properties> load(const std::filesystem::path&);
 };
 
 template <typename ConfigType, typename Name, typename Description>
@@ -289,18 +290,27 @@ struct CVSConfig : public CVSConfigBase {
     }
   };
 
-  static CVSOutcome<Self> make(const std::string& content) noexcept {
+  static CVSOutcome<Self> make(std::istream& stream) noexcept {
     try {
-      return make(load(content));
+      return make(*load(stream));
     }
     catch (...) {
-      CVS_RETURN_WITH_NESTED(std::runtime_error("Can't parse config from text."))
+      CVS_RETURN_WITH_NESTED(std::runtime_error("Can't parse config from stream."))
+    }
+  }
+
+  static CVSOutcome<Self> make(const std::string& content) noexcept {
+    try {
+      return make(*load(content));
+    }
+    catch (...) {
+      CVS_RETURN_WITH_NESTED(std::runtime_error("Can't parse config from string."))
     }
   }
 
   static CVSOutcome<Self> make(const std::filesystem::path& filepath) noexcept {
     try {
-      return make(load(filepath));
+      return make(*load(filepath));
     }
     catch (...) {
       CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format("Can't parse config from file {}.", filepath.string())));
