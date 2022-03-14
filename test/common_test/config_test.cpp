@@ -1,7 +1,30 @@
 #include <cvs/common/config.hpp>
 #include <gtest/gtest.h>
+#include <boost/property_tree/json_parser.hpp>
 
 #include <iostream>
+
+
+struct CustomType {
+  size_t i;
+  std::string line;
+};
+
+struct CustomTypeTranslator {
+  // the type we return
+  using external_type = CustomType;
+  // the type expect as an argument
+  using internal_type = std::string;
+
+  boost::optional< external_type > get_value(const internal_type& properties) {
+    std::cout << "Properties: " << properties << std::endl;
+    return CustomType{ properties.size(), properties.substr(0, properties.size() / 2)};
+  }
+
+  internal_type put_value(const external_type& value) {
+    return value.line + value.line;
+  }
+};
 
 CVS_CONFIG(NestedConfig0, "Nested config 0") {
   CVS_FIELD(value0, int, "Nested 0. Test field 0");
@@ -15,6 +38,7 @@ CVS_CONFIG(TestConfig, "Test config") {
   CVS_FIELD_DEF(value2, double, 0.05, "Default field 2");
   CVS_FIELD_OPT(value3, float, "Optional field 3");
   CVS_FIELD_OPT(value4, double, "Optional field 4");
+  CVS_FIELD(value5, CustomType, "Field 5 with custom translator", CustomTypeTranslator);
 
   CVS_FIELD(nested0, NestedConfig0, "Nested field 0");
 
@@ -35,7 +59,7 @@ CVS_CONFIG(TestConfig, "Test config") {
 CVS_CONFIG(ArrayConfig, "Array config 0") {
   CVS_FIELD(array0, std::vector<int>, "Array 0");
   CVS_FIELD_OPT(array1, std::vector<int>, "Array 1");
-  CVS_FIELD_OPT(array2, std::vector<int>, "Array 2");
+  CVS_FIELD(array2, std::vector<NestedConfig0>, "Array 2");
 };
 
 TEST(ConfigTest, help) {
@@ -45,11 +69,11 @@ TEST(ConfigTest, help) {
   std::cout << description0 << std::endl << std::endl << description1 << std::endl;
 }
 
-TEST(ConfigTest, parsing) {
-  const std::string test_config = R"({
+const std::string test_config = R"({
   "value0" : 10,
   "value2" : 0.005,
   "value4" : 100,
+  "value5" : "some line",
   "nested0" : {
     "value0" : 1,
     "value1" : 2,
@@ -59,6 +83,7 @@ TEST(ConfigTest, parsing) {
   }
 })";
 
+TEST(ConfigTest, parsing) {
   auto params = TestConfig::make(test_config);
   EXPECT_TRUE(params.has_value());
 
@@ -68,6 +93,8 @@ TEST(ConfigTest, parsing) {
   EXPECT_FALSE(params.value().value3.has_value());
   ASSERT_TRUE(params.value().value4.has_value());
   EXPECT_DOUBLE_EQ(100, params.value().value4.value());
+  EXPECT_EQ(params.value().value5.i, 9);
+  EXPECT_EQ(params.value().value5.line, "some");
 
   EXPECT_FLOAT_EQ(0.3, params.value().nested1.value0);
   EXPECT_FALSE(params.value().nested1.value1.has_value());
@@ -78,23 +105,81 @@ TEST(ConfigTest, parsing) {
   EXPECT_FALSE(params.value().nested3.has_value());
 }
 
+TEST(SerializationTest, serialization) {
+  auto params = TestConfig::make(test_config);
+  const auto json = params->to_ptree();
+  std::stringstream stream;
+  boost::property_tree::json_parser::write_json(stream, json);
+  const auto serialized = stream.str();
+  const auto new_params = TestConfig::make(serialized);
+
+  const auto& value = params.value();
+  const auto& new_value = new_params.value();
+  EXPECT_EQ(value.value0, new_value.value0);
+  EXPECT_FLOAT_EQ(value.value1, new_value.value1);
+  EXPECT_DOUBLE_EQ(value.value2, new_value.value2);
+  EXPECT_FALSE(new_value.value3.has_value());
+  ASSERT_TRUE(new_value.value4.has_value());
+  EXPECT_DOUBLE_EQ(value.value4.value(), new_value.value4.value());
+  EXPECT_EQ(value.value5.line, new_value.value5.line);
+
+  EXPECT_FLOAT_EQ(value.nested1.value0, new_value.nested1.value0);
+  EXPECT_FALSE(new_value.nested1.value1.has_value());
+
+  EXPECT_FLOAT_EQ(value.nested2.value0, new_value.nested2.value0);
+  EXPECT_FALSE(new_value.nested2.value1.has_value());
+
+  EXPECT_FALSE(new_value.nested3.has_value());
+}
+
 TEST(ConfigTest, array) {
   const std::string test_config = R"({
   "array0" : [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
-  "array2" : [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ]
+  "array2" : [
+    {
+      "value0" : 1,
+      "value1" : 2,
+      "value2" : 3
+    },
+    {
+      "value0" : 6,
+      "value2" : 0.7
+    },
+    {
+      "value0" : 6,
+      "value1" : 3.912,
+      "value2" : 0.7
+    }]
 })";
 
   auto params = ArrayConfig::make(test_config);
   EXPECT_TRUE(params.has_value());
 
-  auto q = params->array0;
-
   for (int i = 0; i < 10; ++i)
     EXPECT_EQ(i, params->array0[i]);
 
   EXPECT_FALSE(params->array1.has_value());
-  EXPECT_TRUE(params->array2.has_value());
+  EXPECT_EQ(params->array2.size(), 3);
+
+  EXPECT_EQ(params->array2.at(0).value2, 3);
+  EXPECT_FLOAT_EQ(params->array2.at(1).value1, 0.3);
+  EXPECT_EQ(params->array2.at(2).value0, 6);
+
+  const auto json = params->to_ptree();
+  std::stringstream stream;
+  boost::property_tree::json_parser::write_json(stream, json);
+  const auto serialized = stream.str();
+  const auto new_params = ArrayConfig::make(serialized);
+
+  EXPECT_TRUE(new_params.has_value());
 
   for (int i = 0; i < 10; ++i)
-    EXPECT_EQ(i * 10, params->array2->at(i));
+    EXPECT_EQ(i, new_params->array0[i]);
+
+  EXPECT_FALSE(new_params->array1.has_value());
+  EXPECT_EQ(params->array2.size(), new_params->array2.size());
+
+  EXPECT_EQ(params->array2.at(0).value2, new_params->array2.at(0).value2);
+  EXPECT_FLOAT_EQ(params->array2.at(1).value1, new_params->array2.at(1).value1);
+  EXPECT_EQ(params->array2.at(2).value0, new_params->array2.at(2).value0);
 }
