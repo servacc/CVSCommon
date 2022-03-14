@@ -8,9 +8,15 @@ namespace cvs::common {
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 template <typename T>
 struct CVSOutcome : public outcome::outcome<T, std::error_code, std::exception_ptr> {
-  template <typename V>
+  template <typename V, std::enable_if_t<std::is_move_constructible<V>::value, bool> = true>
   CVSOutcome(V&& value)
       : outcome::outcome<T, std::error_code, std::exception_ptr>(std::forward<V>(value)) {}
+
+  template <
+      typename V,
+      std::enable_if_t<std::is_copy_constructible<V>::value && !std::is_move_constructible<V>::value, bool> = true>
+  CVSOutcome(const V& value)
+      : outcome::outcome<T, std::error_code, std::exception_ptr>(value) {}
 
   T&       operator*() { return outcome::outcome<T, std::error_code, std::exception_ptr>::value(); }
   const T& operator*() const { return outcome::outcome<T, std::error_code, std::exception_ptr>::value(); }

@@ -12,6 +12,17 @@ struct ConstexprString {
   static constexpr std::size_t size                      = sizeof...(symbols);
 
   using Char_sequence = std::integer_sequence<char, symbols...>;
+
+  static constexpr std::string_view view() {
+    return std::string_view(value, size);
+  }
+
+  static const std::string& string() {
+    return string_value;
+  }
+
+ private:
+  static const inline auto string_value = std::string(value, size);
 };
 
 // based on GCC extension, NOT STANDARD
