@@ -60,6 +60,7 @@ CVS_CONFIG(ArrayConfig, "Array config 0") {
   CVS_FIELD(array0, std::vector<int>, "Array 0");
   CVS_FIELD_OPT(array1, std::vector<int>, "Array 1");
   CVS_FIELD(array2, std::vector<NestedConfig0>, "Array 2");
+  CVS_FIELD(array3, std::vector<double>, "Array 3");
 };
 
 TEST(ConfigTest, help) {
@@ -149,7 +150,8 @@ TEST(ConfigTest, array) {
       "value0" : 6,
       "value1" : 3.912,
       "value2" : 0.7
-    }]
+    }],
+  "array3" : []
 })";
 
   auto params = ArrayConfig::make(test_config);
@@ -164,6 +166,7 @@ TEST(ConfigTest, array) {
   EXPECT_EQ(params->array2.at(0).value2, 3);
   EXPECT_FLOAT_EQ(params->array2.at(1).value1, 0.3);
   EXPECT_EQ(params->array2.at(2).value0, 6);
+  EXPECT_EQ(params->array3.size(), 0);
 
   const auto json = params->to_ptree();
   std::stringstream stream;
@@ -182,4 +185,5 @@ TEST(ConfigTest, array) {
   EXPECT_EQ(params->array2.at(0).value2, new_params->array2.at(0).value2);
   EXPECT_FLOAT_EQ(params->array2.at(1).value1, new_params->array2.at(1).value1);
   EXPECT_EQ(params->array2.at(2).value0, new_params->array2.at(2).value0);
+  EXPECT_EQ(new_params->array3.size(), 0);
 }

@@ -51,7 +51,7 @@ struct CVSConfig : public CVSConfigBase {
     virtual bool is_optional() const = 0;
 
     virtual void        set(Self& b, const Properties& ptree) = 0;
-    virtual Properties to_ptree(const Self& b) const = 0;
+    virtual std::optional<Properties> to_ptree(const Self& b) const = 0;
 
     virtual std::string_view get_field_name() const = 0;
     virtual std::string describe(std::string_view prefix) const = 0;
@@ -78,7 +78,7 @@ struct CVSConfig : public CVSConfigBase {
       }
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       if constexpr (std::is_same_v<Translator, void>) {
         return result.put(field_name_str::string(), config.*pointer);
@@ -121,7 +121,7 @@ struct CVSConfig : public CVSConfigBase {
       config.*pointer = ptree.get(field_name_str::string(), field_default_value);
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       if constexpr (std::is_same_v<Translator, void>) {
         return result.put(field_name_str::string(), config.*pointer);
@@ -165,7 +165,7 @@ struct CVSConfig : public CVSConfigBase {
         config.*pointer = std::move(*val);
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       if (!(config.*pointer)) {
         return result;
@@ -221,7 +221,7 @@ struct CVSConfig : public CVSConfigBase {
       config.*pointer = std::move(values);
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       for (const auto& element : config.*pointer) {
         Properties child;
@@ -281,10 +281,10 @@ struct CVSConfig : public CVSConfigBase {
         config.*pointer = std::nullopt;
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       if (!(config.*pointer)) {
-        return result;
+        return {};
       }
 
       for (const auto& element : *(config.*pointer)) {
@@ -342,15 +342,15 @@ struct CVSConfig : public CVSConfigBase {
       if (can_be_default) {
         if (auto iter = ptree.find(field_name_str::string());
             iter != ptree.not_found()) {
-          config.*pointer = T::make(iter->second).value();
+          config.*pointer = *T::make(iter->second);
         } else
-          config.*pointer = T::make(Properties{}).value();
+          config.*pointer = *T::make(Properties{});
       } else {
-        config.*pointer = T::make(ptree.get_child(field_name_str::string())).value();
+        config.*pointer = *T::make(ptree.get_child(field_name_str::string()));
       }
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       return (config.*pointer).to_ptree();
     }
 
@@ -385,16 +385,16 @@ struct CVSConfig : public CVSConfigBase {
 
     void set(Self& config, const Properties& ptree) override {
       if (auto iter = ptree.find(field_name_str::string()); iter != ptree.not_found()) {
-        config.*pointer = T::make(iter->second).value();
+        config.*pointer = *T::make(iter->second);
       } else {
         config.*pointer = std::nullopt;
       }
     }
 
-    Properties to_ptree(const Self& config) const override {
+    std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       if (!(config.*pointer)) {
-        return result;
+        return {};
       }
 
       return (config.*pointer)->to_ptree();
@@ -455,12 +455,13 @@ struct CVSConfig : public CVSConfigBase {
   Properties to_ptree() const {
     Properties result;
     for (const auto& field : descriptors()) {
+      const auto field_name = field->get_field_name();
       const auto json = field->to_ptree(*static_cast<const Self*>(this));
-      if (json.empty() && json.data().empty()) {
+      if (!json) {
         continue;
       }
 
-      result.add_child(std::string(field->get_field_name()), json);
+      result.add_child(std::string(field->get_field_name()), *json);
     }
 
     return result;
