@@ -28,8 +28,8 @@ struct is_vector<std::vector<T>> : public std::true_type {};
 struct CVSConfigBase {
   static constexpr auto no_default = nullptr;
 
-  static CVSOutcome<Properties> load(std::istream&);
-  static CVSOutcome<Properties> load(const std::string&);
+  static CVSOutcome<Properties> load(std::stringstream&);
+  static CVSOutcome<Properties> load(std::string_view);
   static CVSOutcome<Properties> load(const std::filesystem::path&);
 };
 
@@ -411,7 +411,7 @@ struct CVSConfig : public CVSConfigBase {
     }
   };
 
-  static CVSOutcome<Self> make(std::istream& stream) noexcept {
+  static CVSOutcome<Self> make(std::stringstream& stream) noexcept {
     try {
       return make(*load(stream));
     }
@@ -420,7 +420,7 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  static CVSOutcome<Self> make(const std::string& content) noexcept {
+  static CVSOutcome<Self> make(std::string_view content) noexcept {
     try {
       return make(*load(content));
     }

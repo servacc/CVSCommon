@@ -85,7 +85,7 @@ const std::string test_config = R"({
 })";
 
 TEST(ConfigTest, parsing) {
-  auto params = TestConfig::make(test_config);
+  auto params = TestConfig::make(std::string_view(test_config));
   EXPECT_TRUE(params.has_value());
 
   EXPECT_EQ(10, params.value().value0);
@@ -107,12 +107,12 @@ TEST(ConfigTest, parsing) {
 }
 
 TEST(SerializationTest, serialization) {
-  auto params = TestConfig::make(test_config);
+  auto params = TestConfig::make(std::string_view(test_config));
   const auto json = params->to_ptree();
   std::stringstream stream;
   boost::property_tree::json_parser::write_json(stream, json);
   const auto serialized = stream.str();
-  const auto new_params = TestConfig::make(serialized);
+  const auto new_params = TestConfig::make(std::string_view(serialized));
 
   const auto& value = params.value();
   const auto& new_value = new_params.value();
@@ -154,7 +154,7 @@ TEST(ConfigTest, array) {
   "array3" : []
 })";
 
-  auto params = ArrayConfig::make(test_config);
+  auto params = ArrayConfig::make(std::string_view(test_config));
   EXPECT_TRUE(params.has_value());
 
   for (int i = 0; i < 10; ++i)
@@ -172,7 +172,7 @@ TEST(ConfigTest, array) {
   std::stringstream stream;
   boost::property_tree::json_parser::write_json(stream, json);
   const auto serialized = stream.str();
-  const auto new_params = ArrayConfig::make(serialized);
+  const auto new_params = ArrayConfig::make(std::string_view(serialized));
 
   EXPECT_TRUE(new_params.has_value());
 

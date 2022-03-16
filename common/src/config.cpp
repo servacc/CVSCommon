@@ -4,7 +4,7 @@
 
 namespace cvs::common {
 
-CVSOutcome<Properties> CVSConfigBase::load(std::istream &stream) {
+CVSOutcome<Properties> CVSConfigBase::load(std::stringstream &stream) {
   Properties root;
   try {
     boost::property_tree::read_json(stream, root);
@@ -16,8 +16,8 @@ CVSOutcome<Properties> CVSConfigBase::load(std::istream &stream) {
   return root;
 }
 
-CVSOutcome<Properties> CVSConfigBase::load(const std::string &content) {
-  std::stringstream ss(content);
+CVSOutcome<Properties> CVSConfigBase::load(std::string_view content) {
+  std::stringstream ss{std::string(content)};
   return load(ss);
 }
 
