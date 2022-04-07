@@ -362,7 +362,7 @@ struct CVSConfig : public CVSConfigBase {
       return result;
     }
     catch (...) {
-      throwWithNested<std::runtime_error>("Can't create uptr {}", boost::core::demangle(typeid(ConfigType).name()));
+      throwWithNested<std::runtime_error>("Can't create uptr {}", boost::core::demangle(typeid(Self).name()));
     }
   }
 
