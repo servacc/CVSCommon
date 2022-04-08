@@ -309,12 +309,12 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  static CVSOutcome<Self> make(const std::filesystem::path& filename) noexcept {
+  static CVSOutcome<Self> make(const std::filesystem::path& filepath) noexcept {
     try {
-      return make(load(filename));
+      return make(load(filepath));
     }
     catch (...) {
-      CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format("Can't parse config from file {}.", filename)));
+      CVS_RETURN_WITH_NESTED(std::runtime_error(fmt::format("Can't parse config from file {}.", filepath.string())));
     }
   }
 
