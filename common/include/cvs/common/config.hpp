@@ -47,14 +47,14 @@ struct CVSConfig : public CVSConfigBase {
     BaseFieldDescriptor() { Self::descriptors().push_back(this); }
     virtual ~BaseFieldDescriptor() = default;
 
-    virtual bool has_default() const = 0;
-    virtual bool is_optional() const = 0;
+    [[nodiscard]] virtual bool has_default() const = 0;
+    [[nodiscard]] virtual bool is_optional() const = 0;
 
     virtual void        set(Self& b, const Properties& ptree) = 0;
     virtual std::optional<Properties> to_ptree(const Self& b) const = 0;
 
-    virtual std::string_view get_field_name() const = 0;
-    virtual std::string describe(std::string_view prefix) const = 0;
+    [[nodiscard]] virtual std::string_view get_field_name() const = 0;
+    [[nodiscard]] virtual std::string describe(std::string_view prefix) const = 0;
   };
 
   // Simple field
@@ -67,8 +67,8 @@ struct CVSConfig : public CVSConfigBase {
             typename Translator          = void,
             typename                     = void>
   struct FieldDescriptor : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return false; }
+    [[nodiscard]] bool has_default() const override { return false; }
+    [[nodiscard]] bool is_optional() const override { return false; }
 
     void set(Self& config, const Properties& ptree) override {
       if constexpr (std::is_same_v<Translator, void>) {
@@ -87,9 +87,9 @@ struct CVSConfig : public CVSConfigBase {
       }
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix,
                          field_name_str::view(),
                          field_base_type_str::view(), "", "",
@@ -114,8 +114,8 @@ struct CVSConfig : public CVSConfigBase {
                          Translator,
                          std::enable_if_t<std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T>>>
       : public BaseFieldDescriptor {
-    bool has_default() const override { return true; }
-    bool is_optional() const override { return false; }
+    [[nodiscard]] bool has_default() const override { return true; }
+    [[nodiscard]] bool is_optional() const override { return false; }
 
     void set(Self& config, const Properties& ptree) override {
       config.*pointer = ptree.get(field_name_str::string(), field_default_value);
@@ -130,9 +130,9 @@ struct CVSConfig : public CVSConfigBase {
       }
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str::view(),
                          field_base_type_str::view(), BaseFieldDescriptor::default_str, field_default_value,
                          field_description::view());
@@ -156,8 +156,8 @@ struct CVSConfig : public CVSConfigBase {
                          Translator,
                          std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T> && !detail::is_vector<T>::value>>
       : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
+    [[nodiscard]] bool has_default() const override { return false; }
+    [[nodiscard]] bool is_optional() const override { return true; }
 
     void set(Self& config, const Properties& ptree) override {
       auto val = ptree.get_optional<T>(field_name_str::string());
@@ -178,9 +178,9 @@ struct CVSConfig : public CVSConfigBase {
       }
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str::view(),
                          field_base_type_str::view(), BaseFieldDescriptor::optional_str, "", field_description::view());
     }
@@ -205,8 +205,8 @@ struct CVSConfig : public CVSConfigBase {
     static constexpr bool is_custom_translator = !std::is_same_v<Translator, void>;
     static_assert(!(is_base_of_config && is_custom_translator), "Config class can't be with custom translator");
 
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
+    [[nodiscard]] bool has_default() const override { return false; }
+    [[nodiscard]] bool is_optional() const override { return true; }
 
     void set(Self& config, const Properties& ptree) override {
       auto           container = ptree.get_child(field_name_str::string());
@@ -239,9 +239,9 @@ struct CVSConfig : public CVSConfigBase {
       return result;
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str::view(),
                          field_base_type_str::view(), "", "", field_description::view());
     }
@@ -267,8 +267,8 @@ struct CVSConfig : public CVSConfigBase {
     static constexpr bool is_custom_translator = !std::is_same_v<Translator, void>;
     static_assert(!(is_base_of_config && is_custom_translator), "Config class can't be with custom translator");
 
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
+    [[nodiscard]] bool has_default() const override { return false; }
+    [[nodiscard]] bool is_optional() const override { return true; }
 
     void set(Self& config, const Properties& ptree) override {
       auto container = ptree.get_child_optional(field_name_str::string());
@@ -303,9 +303,9 @@ struct CVSConfig : public CVSConfigBase {
       return result;
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str::view(),
                          field_base_type_str::view(), BaseFieldDescriptor::optional_str, "", field_description::view());
     }
@@ -327,8 +327,8 @@ struct CVSConfig : public CVSConfigBase {
                          field_default_value,
                          Translator,
                          std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return false; }
+    [[nodiscard]] bool has_default() const override { return false; }
+    [[nodiscard]] bool is_optional() const override { return false; }
 
     void set(Self& config, const Properties& ptree) override {
       bool can_be_default = true;
@@ -354,9 +354,9 @@ struct CVSConfig : public CVSConfigBase {
       return (config.*pointer).to_ptree();
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str::view(),
                          field_base_type_str::view(), "", "", field_description::view()) +
              fmt::format("\n{}{} fields:{}", prefix, field_name_str::view(),
@@ -380,8 +380,8 @@ struct CVSConfig : public CVSConfigBase {
                          field_default_value,
                          Translator,
                          std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
-    bool has_default() const override { return false; }
-    bool is_optional() const override { return true; }
+    [[nodiscard]] bool has_default() const override { return false; }
+    [[nodiscard]] bool is_optional() const override { return true; }
 
     void set(Self& config, const Properties& ptree) override {
       if (auto iter = ptree.find(field_name_str::string()); iter != ptree.not_found()) {
@@ -400,9 +400,9 @@ struct CVSConfig : public CVSConfigBase {
       return (config.*pointer)->to_ptree();
     }
 
-    std::string_view get_field_name() const override { return field_name_str::view(); }
+    [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
 
-    std::string describe(std::string_view prefix) const override {
+    [[nodiscard]] std::string describe(std::string_view prefix) const override {
       return fmt::format(BaseFieldDescriptor::description_format, prefix, field_name_str::view(),
                          field_base_type_str::view(), BaseFieldDescriptor::optional_str, "",
                          field_description::view()) +
@@ -452,7 +452,7 @@ struct CVSConfig : public CVSConfigBase {
     }
   }
 
-  Properties to_ptree() const {
+  [[nodiscard]] Properties to_ptree() const {
     Properties result;
     for (const auto& field : descriptors()) {
       const auto field_name = field->get_field_name();
@@ -467,7 +467,7 @@ struct CVSConfig : public CVSConfigBase {
     return result;
   }
 
-  std::string to_string() const {
+  [[nodiscard]] std::string to_string() const {
     std::stringstream stream;
     boost::property_tree::json_parser::write_json(stream, to_ptree());
     return stream.str();
