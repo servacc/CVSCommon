@@ -112,7 +112,7 @@ struct CVSConfig : public CVSConfigBase {
                          pointer,
                          field_default_value,
                          Translator,
-                         std::enable_if_t<std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T>>>
+                         std::enable_if_t<std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T> && !detail::is_vector<T>::value >>
       : public BaseFieldDescriptor {
     [[nodiscard]] bool has_default() const override { return true; }
     [[nodiscard]] bool is_optional() const override { return false; }
@@ -168,7 +168,7 @@ struct CVSConfig : public CVSConfigBase {
     std::optional<Properties> to_ptree(const Self& config) const override {
       Properties result;
       if (!(config.*pointer)) {
-        return result;
+        return std::nullopt;
       }
 
       if constexpr (std::is_same_v<Translator, void>) {
@@ -261,8 +261,7 @@ struct CVSConfig : public CVSConfigBase {
                          field_base_type_str,
                          pointer,
                          field_default_value,
-                         Translator,
-                         std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
+                         Translator> : public BaseFieldDescriptor {
     static constexpr bool is_base_of_config = std::is_base_of_v<CVSConfigBase, T>;
     static constexpr bool is_custom_translator = !std::is_same_v<Translator, void>;
     static_assert(!(is_base_of_config && is_custom_translator), "Config class can't be with custom translator");
@@ -274,8 +273,13 @@ struct CVSConfig : public CVSConfigBase {
       auto container = ptree.get_child_optional(field_name_str::string());
       if (container) {
         std::vector<T> values;
-        for (auto& iter : *container)
-          values.push_back(iter.second.template get_value<T>());
+        for (auto& iter : *container) {
+          if constexpr (!is_base_of_config) {
+            values.push_back(iter.second.template get_value<T>());
+          } else {
+            values.push_back(*T::make(iter.second));
+          }
+        }
         config.*pointer = std::move(values);
       } else
         config.*pointer = std::nullopt;
@@ -455,7 +459,6 @@ struct CVSConfig : public CVSConfigBase {
   [[nodiscard]] Properties to_ptree() const {
     Properties result;
     for (const auto& field : descriptors()) {
-      const auto field_name = field->get_field_name();
       const auto json = field->to_ptree(*static_cast<const Self*>(this));
       if (!json) {
         continue;
