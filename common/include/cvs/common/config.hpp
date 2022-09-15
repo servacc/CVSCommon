@@ -524,30 +524,41 @@ static constexpr auto getCVSConfigType(const T*, const Name&, const Description&
 
 }  // namespace cvs::common
 
-
-#define CVS_CONFIG_INNER_FIELD_DESCRIPTOR_TYPE(field_name, field_type, field_base_type, field_description, \
-                                               use_default, ...)                                           \
+#define CVS_CONFIG_INNER_FIELD_DESCRIPTOR_TYPE(field_name, field_type, field_base_type,                    \
+                                               field_description, use_default, ...)                        \
   FieldDescriptor<field_type, CVS_CONSTEXPRSTRING(#field_name), CVS_CONSTEXPRSTRING(field_description),    \
-                  CVS_CONSTEXPRSTRING(#field_base_type), &Self::field_name,                                \
+                  CVS_CONSTEXPRSTRING(#field_base_type),                                                   \
+                  &Self::field_name,                                                                       \
                   BOOST_PP_IIF(use_default, field_name##_default_value, no_default)           \
                       __VA_OPT__(, __VA_ARGS__)>
 
-#define CVS_FIELD_BASE(field_name, field_type, field_base_type, field_description, use_default, field_default, ...)       \
-  field_type field_name;                                                                                     \
+#define CVS_FIELD_BASE(field_name, field_type, define_getter, field_base_type, field_description, use_default, field_default, ...)       \
+  field_type field_name;                                                                                                                 \
+  BOOST_PP_IIF(define_getter, public: ,)                                                                                                 \
+  BOOST_PP_IIF(define_getter, const field_type& get_##field_name () const { return field_name; }, )                                                                \
+  BOOST_PP_IIF(define_getter, private: ,) \
   BOOST_PP_IIF(use_default, static inline const field_type field_name##_default_value = field_default;,)     \
   static inline const auto& field_name##_descriptor =                                                        \
       (CVS_CONFIG_INNER_FIELD_DESCRIPTOR_TYPE(                                                               \
           field_name, field_type, field_base_type, field_description, use_default __VA_OPT__(, __VA_ARGS__)){})
 
 #define CVS_FIELD(field_name, field_type, field_description, ...) \
-  CVS_FIELD_BASE(field_name, field_type, field_type, field_description, 0, {} __VA_OPT__(, __VA_ARGS__))
+  CVS_FIELD_BASE(field_name, field_type, 0, field_type, field_description, 0, {} __VA_OPT__(, __VA_ARGS__))
+
+#define CVS_PROPERTY(field_name, field_type, field_description, ...) \
+  CVS_FIELD_BASE(field_name, field_type, 1, field_type, field_description, 0, {} __VA_OPT__(, __VA_ARGS__))
 
 #define CVS_FIELD_DEF(field_name, field_type, field_default, field_description, ...) \
-  CVS_FIELD_BASE(field_name, field_type, field_type, field_description, 1, field_default __VA_OPT__(, __VA_ARGS__))
+  CVS_FIELD_BASE(field_name, field_type, 0, field_type, field_description, 1, field_default __VA_OPT__(, __VA_ARGS__))
+
+#define CVS_PROPERTY_DEF(field_name, field_type, field_default, field_description, ...) \
+  CVS_FIELD_BASE(field_name, field_type, 1, field_type, field_description, 1, field_default __VA_OPT__(, __VA_ARGS__))
 
 #define CVS_FIELD_OPT(field_name, field_type, field_description, ...) \
-  CVS_FIELD_BASE(field_name, std::optional<field_type>, field_type, field_description, 0, {}  __VA_OPT__(, __VA_ARGS__))
+  CVS_FIELD_BASE(field_name, std::optional<field_type>, 0, field_type, field_description, 0, {}  __VA_OPT__(, __VA_ARGS__))
 
+#define CVS_PROPERTY_OPT(field_name, field_type, field_description, ...) \
+  CVS_FIELD_BASE(field_name, std::optional<field_type>, 1, field_type, field_description, 0, {}  __VA_OPT__(, __VA_ARGS__))
 
 #define CVS_CONFIG(name, description, ...)                                                                        \
   struct name : public cvs::common::CVSConfig<name, CVS_CONSTEXPRSTRING(#name), CVS_CONSTEXPRSTRING(description)> \
