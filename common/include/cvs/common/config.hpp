@@ -444,11 +444,28 @@ struct CVSConfig : public CVSConfigBase {
 
   static CVSOutcome<Self> make(const Properties& data) noexcept {
     try {
-      Self result;
-      for (auto& field : descriptors()) {
-        field->set(result, data);
+      if constexpr (Has< Self >::template make<const Properties&>::template with_return_type< std::unique_ptr < Self > >) {
+        const auto result = Self::make(data);
+        if (!result) {
+          throw std::runtime_error(fmt::format("Can't init config {}", Name::view()));
+        }
+
+        return *result;
       }
-      return result;
+      else if constexpr (Has< Self >::template constructor_v<>) {
+        Self result;
+        for (auto& field : descriptors()) {
+          const auto description = field->get_field_name();
+          field->set(result, data);
+        }
+        return result;
+      }
+      else {
+        static_assert(
+          cvs::common::ALWAYS_FALSE<CVSConfig, Self>,
+          "Unknown way of object construction. Try to define default constructor or Self::make(const Properties&)"
+        );
+      }
     }
     catch (...) {
       CVS_RETURN_WITH_NESTED(
