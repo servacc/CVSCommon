@@ -444,7 +444,7 @@ struct CVSConfig : public CVSConfigBase {
 
   static CVSOutcome<Self> make(const Properties& data) noexcept {
     try {
-      if constexpr (Has< Self >::template make<const Properties&>::template with_return_type< std::unique_ptr < Self > >) {
+      if constexpr (HasStaticMethod< Self >::template make<const Properties&>::template with_return_type_v< std::unique_ptr < Self > >) {
         const auto result = Self::make(data);
         if (!result) {
           throw std::runtime_error(fmt::format("Can't init config {}", Name::view()));
