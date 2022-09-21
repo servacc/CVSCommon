@@ -25,18 +25,21 @@ using VoidWrapper = std::conditional_t<std::is_same_v<T, void>, EmptyType<T>, T 
 
 template <typename T>
 class Has {
-  template< template< class, class... > class ReturnTypeTemplate, class Self, class, class... Arguments >
-  static constexpr bool _entity_v = false;
-
-  template< template< class, class... > class ReturnTypeTemplate, class Self, class ReturnType, class... Arguments >
-  static constexpr bool _entity_with_return_v = std::is_same_v< ReturnType, ReturnTypeTemplate< Self, Arguments...>>;
-
-  template< template< class, class... > class ReturnTypeTemplate, class Self, class... Arguments >
-  struct _Entity : std::conditional_t< _entity_v< ReturnTypeTemplate, Self, void, Arguments... >, std::true_type, std::false_type > {
-    template< class ReturnType >
-    static constexpr bool with_return_type_v = _entity_with_return_v< ReturnTypeTemplate, Self, ReturnType, Arguments... >;
+  template <typename PointerToFieldType>
+  class GetPointerToFieldType {
+    template <typename ClassType, typename ResultType>
+    static ResultType get_type(ResultType ClassType::*v);
+   public:
+    using type = decltype(get_type(static_cast<PointerToFieldType>(nullptr)));
   };
 
+  template< template< class > class Pointer, class Self, class >
+  static constexpr bool _is_private_or_overloaded_v = true;
+
+  template< template< class, class...> class ReturnType, class Self, class, class... Arguments>
+  static constexpr bool _is_callable_v = false;
+
+ private:
   template< class Self, class... Arguments >
   using _constructor = decltype(Self(std::declval< Arguments&& >()...));
 
@@ -45,58 +48,107 @@ class Has {
 
  public:
   template< class... Arguments >
-  static constexpr bool constructor_v = _entity_v< _constructor, T, void, Arguments... >;
+  static constexpr bool constructor_v = _is_callable_v< _constructor, T, void, Arguments... >;
 
-  static constexpr bool destructor_v = _entity_v< _destructor, T, void >;
+  static constexpr bool destructor_v = _is_private_or_overloaded_v< _destructor, T, void >;
 
-  template< template< class, class... > class ReturnTypeTemplate, class... Arguments >
-  static constexpr bool getEntityValue() {
-    return _entity_v<ReturnTypeTemplate, T, void, Arguments...>;
-  }
+  template< template< class, class... > class PointerTemplate >
+  static constexpr bool is_private_or_overloaded_v = _is_private_or_overloaded_v<PointerTemplate, T, void >;
 
   template< template< class, class... > class ReturnTypeTemplate, class... Arguments >
-  static constexpr _Entity<ReturnTypeTemplate, T, Arguments...> getEntityType() {
-    return {};
-  }
+  static constexpr bool is_callable_v = _is_callable_v<ReturnTypeTemplate, T, void, Arguments... >;
+
+  template<
+    bool is_callable,
+    bool is_instance,
+    class Self,
+    template <class, class... > class ReturnTypeTemplate,
+    class... Arguments
+  >
+  struct MethodType {
+    template< class ReturnType >
+    static constexpr bool with_return_type_v = [] () -> bool
+      {
+        if constexpr (is_callable && is_instance) {
+          return std::is_same_v<ReturnType,ReturnTypeTemplate<Self, Arguments...>>;
+        }
+        if constexpr (is_callable && !is_instance) {
+          return std::is_same_v<ReturnType, ReturnTypeTemplate<Self, Arguments...>>;
+        }
+        else {
+          return false;
+        };
+      }();
+  };
+
+  template<
+    bool is_accessible,
+    bool is_instance,
+    class Self,
+    template <class, class... > class PointerTemplate
+  >
+  struct FieldType {
+    template< class ReturnType >
+    static constexpr bool with_return_type_v = [] () -> bool
+      {
+        if constexpr (is_accessible && is_instance) { // instance field
+          return std::is_same_v< ReturnType, typename GetPointerToFieldType< PointerTemplate< Self > >::type >;
+        }
+        else if constexpr (is_accessible && !is_instance) { // static field
+          return std::is_same_v< ReturnType, std::remove_pointer_t< PointerTemplate< Self > > >;
+        }
+        else {
+          return false;
+        };
+      }();
+  };
 };
 
 template< class T >
-template< template< class, class... > class ReturnTypeTemplate, class Self, class... Arguments >
-constexpr bool Has< T >::_entity_v< ReturnTypeTemplate, Self, std::void_t< ReturnTypeTemplate< Self, Arguments...>>, Arguments... > = true;
+template< template< class > class Pointer, class Self >
+constexpr bool Has< T >::_is_private_or_overloaded_v< Pointer, Self, std::void_t< Pointer< Self >> > = false;
+
+template< class T >
+template< template< class, class... > class FunctionReturnType, class Self, class... Arguments >
+constexpr bool Has< T >::_is_callable_v< FunctionReturnType, Self, std::void_t< FunctionReturnType< Self, Arguments... >>, Arguments... > = true;
+
 
 #define CVS_HAS_INNER_STATIC_PREFIX(X)   X ::
 #define CVS_HAS_INNER_INSTANCE_PREFIX(X) std::declval<X>().
 
-#define CVS_HAS_METHOD(result_name, method_name, prefix_macro)                                                                      \
- private:                                                                                                                           \
-  template <class Self, class... Arguments>                                                                                         \
-  using result_name##_return = decltype(prefix_macro(Self) method_name(std::declval<Arguments&&>()...));                            \
- public:                                                                                                                            \
-  template <class... Arguments>                                                                                                     \
-  static constexpr bool result_name##_v =                                                                                           \
-      cvs::common::Has< cvs::common::VoidWrapper<T> >::template getEntityValue<result_name##_return, Arguments...>();               \
-                                                                                                                                    \
-  template <class... Arguments>                                                                                                     \
-  using result_name =                                                                                                               \
-      decltype(cvs::common::Has< cvs::common::VoidWrapper<T> >::template getEntityType<result_name##_return, Arguments...>())
+#define CVS_HAS_METHOD(result_name, method_name, prefix_macro, is_instance)                                            \
+ private:                                                                                                              \
+  template <class Self> using _##result_name##_pointer = decltype(&Self::method_name);                                 \
+  template< class Self, class... Arguments >                                                                           \
+  using _##result_name##_returnType = decltype(prefix_macro(Self) method_name(std::declval<Arguments>()...) );         \
+ public:                                                                                                               \
+  static constexpr bool is_##result_name##_private_or_overloaded_v =                                                   \
+    cvs::common::Has<cvs::common::VoidWrapper<T>>::template is_private_or_overloaded_v<_##result_name##_pointer>;      \
+                                                                                                                       \
+  template <class... Arguments> static constexpr bool result_name##_v =                                                \
+    cvs::common::Has<cvs::common::VoidWrapper<T>>::template is_callable_v<_##result_name##_returnType, Arguments... >; \
+ public:                                                                                                               \
+  template <class... Arguments>                                                                                        \
+  using result_name = typename cvs::common::Has< cvs::common::VoidWrapper<T> >::template MethodType<                   \
+    result_name##_v<Arguments...>, is_instance, T, _##result_name##_returnType, Arguments... >;
 
-#define CVS_HAS_FIELD(name, prefix_macro)                                                                       \
+#define CVS_HAS_FIELD(name, prefix_macro, is_instance)                                                          \
  private:                                                                                                       \
-  template <class Self> using name##_return = decltype(prefix_macro(Self) read);                                \
+  template <class Self> using _##name##_pointer = decltype(&Self::name);                                           \
  public:                                                                                                        \
   static constexpr bool name##_v =                                                                              \
-      cvs::common::Has< cvs::common::VoidWrapper<T> >::template getEntityValue<name##_return>();                \
-  static constexpr bool name## =                                                                                \
-      decltype(cvs::common::Has< cvs::common::VoidWrapper<T> >::template getEntityType<name##_return>())
+    !cvs::common::Has< cvs::common::VoidWrapper<T> >:: template is_private_or_overloaded_v<_##name##_pointer>;     \
+  using name = typename cvs::common::Has< cvs::common::VoidWrapper<T> >::template FieldType<                   \
+                 name##_v, is_instance, T, _##name##_pointer >
 
-#define CVS_HAS_STATIC_METHOD(result_name, method_name) CVS_HAS_METHOD(result_name, method_name, CVS_HAS_INNER_STATIC_PREFIX)
-#define CVS_HAS_INSTANCE_METHOD(result_name, method_name) CVS_HAS_METHOD(result_name, method_name, CVS_HAS_INNER_INSTANCE_PREFIX)
+#define CVS_HAS_STATIC_METHOD(result_name, method_name) CVS_HAS_METHOD(result_name, method_name, CVS_HAS_INNER_STATIC_PREFIX, false)
+#define CVS_HAS_INSTANCE_METHOD(result_name, method_name) CVS_HAS_METHOD(result_name, method_name, CVS_HAS_INNER_INSTANCE_PREFIX, true)
 
 #define CVS_HAS_STATIC_METHOD_DEFAULT(name)   CVS_HAS_STATIC_METHOD(name, name)
 #define CVS_HAS_INSTANCE_METHOD_DEFAULT(name) CVS_HAS_INSTANCE_METHOD(name, name)
 
-#define CVS_HAS_STATIC_FIELD(name)   CVS_HAS_FIELD(name, CVS_HAS_INNER_STATIC_PREFIX)
-#define CVS_HAS_INSTANCE_FIELD(name) CVS_HAS_FIELD(name, CVS_HAS_INNER_INSTANCE_PREFIX)
+#define CVS_HAS_STATIC_FIELD(name)   CVS_HAS_FIELD(name, CVS_HAS_INNER_STATIC_PREFIX, false)
+#define CVS_HAS_INSTANCE_FIELD(name) CVS_HAS_FIELD(name, CVS_HAS_INNER_INSTANCE_PREFIX, true)
 
 template< class T >
 struct HasStaticMethod {
