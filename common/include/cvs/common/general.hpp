@@ -2,6 +2,7 @@
 
 #include <boost/hana/type.hpp>
 #include <boost/outcome.hpp>
+#include <boost/optional.hpp>
 #include <fmt/format.h>
 
 #include <optional>
@@ -10,6 +11,17 @@ namespace cvs::common {
 
 template< class... T>
 constexpr bool ALWAYS_FALSE = false;
+
+template <typename T>
+boost::optional<T> stdToBoostOptional(std::optional<T>&& value) {
+  if (!value) {
+    return boost::none;
+  }
+
+  boost::optional<T> result;
+  result.template emplace(std::move(*value));
+  return result;
+}
 
 template <typename T, typename Enable = void>
 struct is_optional : std::false_type {};
@@ -22,6 +34,11 @@ struct EmptyType {};
 
 template< class T >
 using VoidWrapper = std::conditional_t<std::is_same_v<T, void>, EmptyType<T>, T >;
+
+template <class T>
+struct PhantomType {
+  using type = T;
+};
 
 template <typename T>
 class Has {

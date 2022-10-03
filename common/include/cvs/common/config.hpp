@@ -23,6 +23,37 @@ struct is_vector : std::false_type {};
 template <typename T>
 struct is_vector<std::vector<T>> : public std::true_type {};
 
+template< class T >
+class HasInstanceMethod {
+  CVS_HAS_INSTANCE_METHOD_DEFAULT(put_value);
+  CVS_HAS_INSTANCE_METHOD_DEFAULT(get_value);
+};
+
+template <typename T>
+class HasDefaultTranslator {
+  template <typename Self, class = void>
+  static constexpr bool _get = false;
+
+  template <typename Self, class = void>
+  static constexpr bool _put = false;
+
+ public:
+  static constexpr bool get = _get<T>;
+  static constexpr bool put = _put<T>;
+};
+
+template <typename T>
+template <typename Self>
+constexpr bool HasDefaultTranslator<T>::_get<
+  Self, std::void_t<decltype(std::declval<std::istringstream&>() >> std::declval<Self&>())>
+> = true;
+
+template <typename T>
+template <typename Self>
+constexpr bool HasDefaultTranslator<T>::_put<
+  Self, std::void_t<decltype(std::declval<std::ostringstream&>() << std::declval<const Self&>())>
+> = true;
+
 }  // namespace detail
 
 struct CVSConfigBase {
@@ -33,11 +64,113 @@ struct CVSConfigBase {
   static CVSOutcome<Properties> load(const std::filesystem::path&);
 };
 
+template <typename T>
+using Translator = typename boost::property_tree::translator_between<std::string, T >::type;
+
 template <typename ConfigType, typename Name, typename Description>
 struct CVSConfig : public CVSConfigBase {
   using Self = ConfigType;
   using Base = CVSConfig<ConfigType, Name, Description>;
 
+ private:
+  template <typename T>
+  static Properties put_value(
+    const T& value,
+    const std::string& name
+  ) {
+      if constexpr (
+        detail::HasInstanceMethod< Translator<T> >::template
+          put_value<const T&>::template
+            with_return_type_v< Properties >
+      ) {
+        return Translator<T>().put_value(value);
+      }
+      else if constexpr (
+        detail::HasInstanceMethod< Translator<T> >::template put_value<const T&>::template
+                                                               with_return_type_v< std::string >
+        || detail::HasDefaultTranslator<T>::put
+      ) {
+        Properties result;
+        return result.put(name, value);
+      }
+      else {
+        throw std::runtime_error(
+          fmt::format(
+            "There are no translator for '{}' (from std::string because of terminal value). "
+              "Try to specialize boost::property_tree::translator_between for this type or check config.",
+            typeid(T).name()
+          )
+        );
+      }
+  }
+
+  template <typename T>
+  static boost::optional<T> get_value_optional(const Properties& ptree) {
+    if (ptree.empty() && !ptree.data().empty()) { // terminal value
+      if constexpr (
+        detail::HasInstanceMethod< Translator<T> >::template get_value<const std::string&>::template
+                                                               with_return_type_v< boost::optional<T> >
+      ) {
+        return ptree.get_value_optional< T >();
+      }
+      else {
+        throw std::runtime_error(
+          fmt::format(
+            "There are no translator for '{}' (from std::string because of terminal value). "
+              "Try to specialize boost::property_tree::translator_between for this type or check config.",
+            typeid(T).name()
+          )
+        );
+      }
+    }
+    else if (!ptree.empty() && ptree.data().empty()) { // node
+      if constexpr (
+        detail::HasInstanceMethod< Translator<T> >::template get_value<const Properties&>::template
+          with_return_type_v< boost::optional<T> >
+      ) {
+        return Translator<T>().get_value(ptree);
+      }
+      else {
+        throw std::runtime_error(fmt::format(
+          "There are no 'translator_between<string, T>().get_value(const std::Properties&) "
+            "- > boost::optional<T>', where T - {}",
+          typeid(T).name()
+        ));
+      }
+    }
+
+    throw std::runtime_error("Unknown ptree node type");
+  }
+
+  template <typename T>
+  static boost::optional<T> get_value_optional(const Properties& ptree, const std::string& name) {
+    const auto child = ptree.get_child_optional(name);
+    if (!child) {
+      return boost::none;
+    }
+
+    return get_value_optional<T>(*child);
+  }
+
+
+
+  template <typename T, auto& field_default_value = no_default>
+  static T get_value(const Properties& ptree, boost::optional<const std::string&> name = boost::none) {
+    const auto result = name ? get_value_optional<T>(ptree, *name) : get_value_optional<T>(ptree);
+
+    if (result) {
+      return *result;
+    }
+
+    if constexpr (std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T>) {
+      return field_default_value;
+    }
+    else {
+      throw std::runtime_error(fmt::format("Can't convert field '{}' from string", name ? *name : "_empty_"));
+    }
+  }
+
+ public:
   struct BaseFieldDescriptor {
     static constexpr const char* description_format = "{}{: <10} {: <10} {: <9} {: <10} Description: {}";
 
@@ -64,27 +197,17 @@ struct CVSConfig : public CVSConfigBase {
             typename field_base_type_str,
             T Self::*pointer,
             auto&    field_default_value = no_default,
-            typename Translator          = void,
             typename                     = void>
   struct FieldDescriptor : public BaseFieldDescriptor {
     [[nodiscard]] bool has_default() const override { return false; }
     [[nodiscard]] bool is_optional() const override { return false; }
 
     void set(Self& config, const Properties& ptree) override {
-      if constexpr (std::is_same_v<Translator, void>) {
-        config.*pointer = ptree.get<T>(field_name_str::string());
-      } else {
-        config.*pointer = ptree.get<T>(field_name_str::string(), Translator{});
-      }
+      config.*pointer = get_value<T>(ptree, field_name_str::string());
     }
 
     std::optional<Properties> to_ptree(const Self& config) const override {
-      Properties result;
-      if constexpr (std::is_same_v<Translator, void>) {
-        return result.put(field_name_str::string(), config.*pointer);
-      } else {
-        return result.put(field_name_str::string(), config.*pointer, Translator{});
-      }
+      return put_value<T>(config.*pointer, field_name_str::string());
     }
 
     [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
@@ -103,31 +226,24 @@ struct CVSConfig : public CVSConfigBase {
             typename field_description,
             typename field_base_type_str,
             T Self::*pointer,
-            auto&    field_default_value,
-            typename Translator>
+            auto&    field_default_value>
   struct FieldDescriptor<T,
                          field_name_str,
                          field_description,
                          field_base_type_str,
                          pointer,
                          field_default_value,
-                         Translator,
                          std::enable_if_t<std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T> && !detail::is_vector<T>::value >>
       : public BaseFieldDescriptor {
     [[nodiscard]] bool has_default() const override { return true; }
     [[nodiscard]] bool is_optional() const override { return false; }
 
     void set(Self& config, const Properties& ptree) override {
-      config.*pointer = ptree.get(field_name_str::string(), field_default_value);
+      config.*pointer = get_value<T, field_default_value>(ptree, field_name_str::string());
     }
 
     std::optional<Properties> to_ptree(const Self& config) const override {
-      Properties result;
-      if constexpr (std::is_same_v<Translator, void>) {
-        return result.put(field_name_str::string(), config.*pointer);
-      } else {
-        return result.put(field_name_str::string(), config.*pointer, Translator{});
-      }
+      return put_value<T>(config.*pointer, field_name_str::string());
     }
 
     [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
@@ -145,37 +261,30 @@ struct CVSConfig : public CVSConfigBase {
             typename field_description,
             typename field_base_type_str,
             std::optional<T> Self::*pointer,
-            auto&            field_default_value,
-            typename         Translator>
+            auto&            field_default_value>
   struct FieldDescriptor<std::optional<T>,
                          field_name_str,
                          field_description,
                          field_base_type_str,
                          pointer,
                          field_default_value,
-                         Translator,
                          std::enable_if_t<!std::is_base_of_v<CVSConfigBase, T> && !detail::is_vector<T>::value>>
       : public BaseFieldDescriptor {
     [[nodiscard]] bool has_default() const override { return false; }
     [[nodiscard]] bool is_optional() const override { return true; }
 
     void set(Self& config, const Properties& ptree) override {
-      auto val = ptree.get_optional<T>(field_name_str::string());
+      auto val = get_value_optional<T>(ptree, field_name_str::string());
       if (val)
         config.*pointer = std::move(*val);
     }
 
     std::optional<Properties> to_ptree(const Self& config) const override {
-      Properties result;
       if (!(config.*pointer)) {
         return std::nullopt;
       }
 
-      if constexpr (std::is_same_v<Translator, void>) {
-        return result.put(field_name_str::string(), *(config.*pointer));
-      } else {
-        return result.put(field_name_str::string(), *(config.*pointer), Translator{});
-      }
+      return put_value<T>(*(config.*pointer), field_name_str::string());
     }
 
     [[nodiscard]] std::string_view get_field_name() const override { return field_name_str::view(); }
@@ -192,18 +301,14 @@ struct CVSConfig : public CVSConfigBase {
             typename field_description,
             typename field_base_type_str,
             std::vector<T> Self::*pointer,
-            auto&          field_default_value,
-            typename       Translator>
+            auto&          field_default_value>
   struct FieldDescriptor<std::vector<T>,
                          field_name_str,
                          field_description,
                          field_base_type_str,
                          pointer,
-                         field_default_value,
-                         Translator> : public BaseFieldDescriptor {
+                         field_default_value> : public BaseFieldDescriptor {
     static constexpr bool is_base_of_config = std::is_base_of_v<CVSConfigBase, T>;
-    static constexpr bool is_custom_translator = !std::is_same_v<Translator, void>;
-    static_assert(!(is_base_of_config && is_custom_translator), "Config class can't be with custom translator");
 
     [[nodiscard]] bool has_default() const override { return false; }
     [[nodiscard]] bool is_optional() const override { return true; }
@@ -213,9 +318,9 @@ struct CVSConfig : public CVSConfigBase {
       std::vector<T> values;
       for (auto& iter : container) {
         if constexpr (!is_base_of_config) {
-          values.push_back(iter.second.template get_value<T>());
+          values.emplace_back(get_value<T>(iter.second));
         } else {
-          values.push_back(*T::make(iter.second));
+          values.emplace_back(*T::make(iter.second));
         }
       }
       config.*pointer = std::move(values);
@@ -227,10 +332,8 @@ struct CVSConfig : public CVSConfigBase {
         Properties child;
         if constexpr (is_base_of_config) {
           child = element.to_ptree();
-        } else if constexpr (is_custom_translator) {
-          child.put("", element, Translator{});
         } else {
-          child.put("", element);
+          child = put_value<T>(element, "");
         }
 
         result.push_back(std::make_pair("", child));
@@ -253,18 +356,14 @@ struct CVSConfig : public CVSConfigBase {
             typename field_description,
             typename field_base_type_str,
             std::optional<std::vector<T>> Self::*pointer,
-            auto&                         field_default_value,
-            typename                      Translator>
+            auto&                         field_default_value>
   struct FieldDescriptor<std::optional<std::vector<T>>,
                          field_name_str,
                          field_description,
                          field_base_type_str,
                          pointer,
-                         field_default_value,
-                         Translator> : public BaseFieldDescriptor {
+                         field_default_value> : public BaseFieldDescriptor {
     static constexpr bool is_base_of_config = std::is_base_of_v<CVSConfigBase, T>;
-    static constexpr bool is_custom_translator = !std::is_same_v<Translator, void>;
-    static_assert(!(is_base_of_config && is_custom_translator), "Config class can't be with custom translator");
 
     [[nodiscard]] bool has_default() const override { return false; }
     [[nodiscard]] bool is_optional() const override { return true; }
@@ -275,7 +374,7 @@ struct CVSConfig : public CVSConfigBase {
         std::vector<T> values;
         for (auto& iter : *container) {
           if constexpr (!is_base_of_config) {
-            values.push_back(iter.second.template get_value<T>());
+            values.push_back(get_value<T>(iter.second));
           } else {
             values.push_back(*T::make(iter.second));
           }
@@ -295,10 +394,8 @@ struct CVSConfig : public CVSConfigBase {
         Properties child;
         if constexpr (is_base_of_config) {
           child = element.to_ptree();
-        } else if constexpr (is_custom_translator) {
-          child.put("", element, Translator{});
         } else {
-          child.put("", element);
+          child = put_value<T>(element, "");
         }
 
         result.push_back(std::make_pair("", child));
@@ -321,15 +418,13 @@ struct CVSConfig : public CVSConfigBase {
             typename field_description,
             typename field_base_type_str,
             T Self::*pointer,
-            auto&    field_default_value,
-            typename Translator>
+            auto&    field_default_value>
   struct FieldDescriptor<T,
                          field_name_str,
                          field_description,
                          field_base_type_str,
                          pointer,
                          field_default_value,
-                         Translator,
                          std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
     [[nodiscard]] bool has_default() const override { return false; }
     [[nodiscard]] bool is_optional() const override { return false; }
@@ -344,8 +439,10 @@ struct CVSConfig : public CVSConfigBase {
       }
 
       if (can_be_default) {
-        if (auto iter = ptree.find(field_name_str::string());
-            iter != ptree.not_found()) {
+        if (
+          auto iter = ptree.find(field_name_str::string());
+          iter != ptree.not_found()
+        ) {
           config.*pointer = *T::make(iter->second);
         } else
           config.*pointer = *T::make(Properties{});
@@ -374,15 +471,13 @@ struct CVSConfig : public CVSConfigBase {
             typename field_description,
             typename field_base_type_str,
             std::optional<T> Self::*pointer,
-            auto&                   field_default_value,
-            typename         Translator>
+            auto&                   field_default_value>
   struct FieldDescriptor<std::optional<T>,
                          field_name_str,
                          field_description,
                          field_base_type_str,
                          pointer,
                          field_default_value,
-                         Translator,
                          std::enable_if_t<std::is_base_of_v<CVSConfigBase, T>>> : public BaseFieldDescriptor {
     [[nodiscard]] bool has_default() const override { return false; }
     [[nodiscard]] bool is_optional() const override { return true; }

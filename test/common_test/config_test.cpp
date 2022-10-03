@@ -10,20 +10,28 @@ struct CustomType {
   std::string line;
 };
 
-struct CustomTypeTranslator {
-  // the type we return
-  using external_type = CustomType;
-  // the type expect as an argument
-  using internal_type = std::string;
+template <>
+struct boost::property_tree::translator_between<std::string, CustomType> {
+  struct CustomTypeTranslator {
+    boost::optional<CustomType> get_value(const boost::property_tree::ptree& properties) {
+      const auto i    = properties.template get_optional<size_t>("i");
+      const auto line = properties.template get_optional<std::string>("line");
+      if (!i || !line) {
+        return boost::none;
+      }
 
-  boost::optional< external_type > get_value(const internal_type& properties) {
-    std::cout << "Properties: " << properties << std::endl;
-    return CustomType{ properties.size(), properties.substr(0, properties.size() / 2)};
-  }
+      return CustomType{*i, *line};
+    }
 
-  internal_type put_value(const external_type& value) {
-    return value.line + value.line;
-  }
+    boost::property_tree::ptree put_value(const CustomType& value) {
+      boost::property_tree::ptree result;
+      result.put("i", value.i);
+      result.put("line", value.line);
+      return result;
+    }
+  };
+
+  using type = CustomTypeTranslator;
 };
 
 CVS_CONFIG(NestedConfig0, "Nested config 0") {
@@ -38,7 +46,7 @@ CVS_CONFIG(TestConfig, "Test config") {
   CVS_FIELD_DEF(value2, double, 0.05, "Default field 2");
   CVS_FIELD_OPT(value3, float, "Optional field 3");
   CVS_FIELD_OPT(value4, double, "Optional field 4");
-  CVS_FIELD(value5, CustomType, "Field 5 with custom translator", CustomTypeTranslator);
+  CVS_FIELD(value5, CustomType, "Field 5 with custom translator");
 
   CVS_FIELD(nested0, NestedConfig0, "Nested field 0");
 
@@ -61,6 +69,7 @@ CVS_CONFIG(ArrayConfig, "Array config 0") {
   CVS_FIELD_OPT(array1, std::vector<int>, "Array 1");
   CVS_FIELD(array2, std::vector<NestedConfig0>, "Array 2");
   CVS_FIELD(array3, std::vector<double>, "Array 3");
+  CVS_FIELD(array_custom_type, std::vector<CustomType>, "Array 4");
 };
 
 TEST(ConfigTest, help) {
@@ -74,7 +83,10 @@ const std::string test_config = R"({
   "value0" : 10,
   "value2" : 0.005,
   "value4" : 100,
-  "value5" : "some line",
+  "value5" : {
+    "line" : "some",
+    "i" : "2"
+  },
   "nested0" : {
     "value0" : 1,
     "value1" : 2,
@@ -94,7 +106,7 @@ TEST(ConfigTest, parsing) {
   EXPECT_FALSE(params.value().value3.has_value());
   ASSERT_TRUE(params.value().value4.has_value());
   EXPECT_DOUBLE_EQ(100, params.value().value4.value());
-  EXPECT_EQ(params.value().value5.i, 9);
+  EXPECT_EQ(params.value().value5.i, 2);
   EXPECT_EQ(params.value().value5.line, "some");
 
   EXPECT_FLOAT_EQ(0.3, params.value().nested1.value0);
@@ -106,7 +118,7 @@ TEST(ConfigTest, parsing) {
   EXPECT_FALSE(params.value().nested3.has_value());
 }
 
-TEST(SerializationTest, serialization) {
+TEST(ConfigTest, serialization) {
   auto params = TestConfig::make(std::string_view(test_config));
   const auto json = params->to_ptree();
   std::stringstream stream;
@@ -151,7 +163,11 @@ TEST(ConfigTest, array) {
       "value1" : 3.912,
       "value2" : 0.7
     }],
-  "array3" : []
+  "array3" : [],
+  "array_custom_type" : [
+    { "i" : 10, "line" : "oleeee" },
+    { "i" : 1311, "line" : "ol000" }
+  ]
 })";
 
   auto params = ArrayConfig::make(std::string_view(test_config));
