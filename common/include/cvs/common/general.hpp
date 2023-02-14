@@ -181,21 +181,41 @@ struct HasInstanceMethod {
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 template <typename T>
 struct CVSOutcome : public outcome::outcome<T, std::error_code, std::exception_ptr> {
+  using Base = outcome::outcome<T, std::error_code, std::exception_ptr>;
+
   template <typename V, std::enable_if_t<std::is_move_constructible<V>::value, bool> = true>
-  CVSOutcome(V&& value)
-      : outcome::outcome<T, std::error_code, std::exception_ptr>(std::forward<V>(value)) {}
+  constexpr CVSOutcome(V&& value) : Base(std::forward<V>(value)) {}
 
   template <
       typename V,
       std::enable_if_t<std::is_copy_constructible<V>::value && !std::is_move_constructible<V>::value, bool> = true>
-  CVSOutcome(const V& value)
-      : outcome::outcome<T, std::error_code, std::exception_ptr>(value) {}
+  constexpr CVSOutcome(const V& value) : Base(value) {}
 
-  T&       operator*() { return outcome::outcome<T, std::error_code, std::exception_ptr>::value(); }
-  const T& operator*() const { return outcome::outcome<T, std::error_code, std::exception_ptr>::value(); }
+  constexpr T&       operator*() { return Base::value(); }
+  constexpr const T& operator*() const { return Base::value(); }
 
-  T*       operator->() { return &outcome::outcome<T, std::error_code, std::exception_ptr>::value(); }
-  const T* operator->() const { return &outcome::outcome<T, std::error_code, std::exception_ptr>::value(); }
+  constexpr T*       operator->() { return &Base::value(); }
+  constexpr const T* operator->() const { return &Base::value(); }
+
+  T& value_or_throw(const std::string& message) {
+    if (!Base::has_value()) {
+      if (Base::has_exception()) {
+        try {
+          std::rethrow_exception(Base::exception());
+        }
+        catch(...) {
+          std::throw_with_nested(std::runtime_error(message));
+        }
+      }
+      else { // has error
+        throw std::runtime_error(Base::error().message());
+      }
+    }
+
+    return Base::value();
+  }
+
+  const T& value_or_throw(const std::string& message) const { return std::as_const( (T&) value_or_throw(message)); }
 };
 
 std::string exceptionStr(const std::exception& e, int level = 0);
