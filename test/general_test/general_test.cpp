@@ -60,16 +60,26 @@ struct TestType {
 template <typename T>
 struct TemplateTest{};
 
+template <>
+struct TemplateTest< std::vector< int > > {
+  std::optional< int > public_instance_method_in_specialization(int);
+};
+
+template <>
+struct TemplateTest< std::vector< double > > {
+  std::optional< double > public_instance_method_in_specialization(int);
+};
+
 template <typename T>
 std::pair<T, bool> specification_in_template_function_test_expected_true() {
-  const auto expected_true = Has< TemplateTest< std::vector< T > > >::Instance::Method::template public_instance_method_in_specialization<int>::template
+  constexpr auto expected_true = Has< TemplateTest< std::vector< T > > >::Instance::Method::template public_instance_method_in_specialization<int>::template
                  with_return_type_v<std::optional< T > >;
   return std::make_pair(T{}, expected_true);
 }
 
 template <typename T>
 std::pair<T, bool> specification_in_template_function_test_expected_false() {
-  const auto expected_false = Has< TemplateTest< T > >::Instance::Method::template public_instance_method_in_specialization<int>::template
+  constexpr auto expected_false = Has< TemplateTest< T > >::Instance::Method::template public_instance_method_in_specialization<int>::template
                  with_return_type_v<std::optional< T > >;
   return std::make_pair(T{}, expected_false);
 }
