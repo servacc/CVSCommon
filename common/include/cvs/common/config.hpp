@@ -105,22 +105,26 @@ struct CVSConfig : public CVSConfigBase {
   }
 
   template <typename T>
-  static boost::optional<T> get_value_optional(const Properties& ptree) {
-    if (ptree.empty() && !ptree.data().empty()) { // terminal value
+  static cvs::common::CVSOutcome<T> get_value_outcome(const Properties& ptree) {
+    if (ptree.empty()) { // terminal value
       if constexpr (
         detail::HasInstanceMethod< Translator<T> >::template get_value<const std::string&>::template
                                                                with_return_type_v< boost::optional<T> >
       ) {
-        return ptree.get_value_optional< T >();
+        const auto result = ptree.get_value_optional< T >();
+        return
+          result ?
+            cvs::common::CVSOutcome<T>(*result)
+            : std::make_exception_ptr(std::runtime_error("Can't convert value from string"));
       }
       else {
-        throw std::runtime_error(
+        return std::make_exception_ptr(std::runtime_error(
           fmt::format(
             "There are no translator for '{}' (from std::string because of terminal value). "
               "Try to specialize boost::property_tree::translator_between for this type or check config.",
             typeid(T).name()
           )
-        );
+        ));
       }
     }
     else if (!ptree.empty() && ptree.data().empty()) { // node
@@ -128,35 +132,39 @@ struct CVSConfig : public CVSConfigBase {
         detail::HasInstanceMethod< Translator<T> >::template get_value<const Properties&>::template
           with_return_type_v< boost::optional<T> >
       ) {
-        return Translator<T>().get_value(ptree);
+        const auto result = Translator<T>().get_value(ptree);
+        return
+          result ?
+            cvs::common::CVSOutcome<T>(*result)
+            : std::make_exception_ptr(std::runtime_error("Can't convert value from ptree"));
       }
       else {
-        throw std::runtime_error(fmt::format(
+        return std::make_exception_ptr(std::runtime_error(fmt::format(
           "There are no 'translator_between<string, T>().get_value(const std::Properties&) "
             "- > boost::optional<T>', where T - {}",
           typeid(T).name()
-        ));
+        )));
       }
     }
 
-    throw std::runtime_error("Unknown ptree node type");
+    return std::make_exception_ptr(std::runtime_error("Unknown ptree node type"));
   }
 
   template <typename T>
-  static boost::optional<T> get_value_optional(const Properties& ptree, const std::string& name) {
+  static cvs::common::CVSOutcome<T> get_value_outcome(const Properties& ptree, const std::string& name) {
     const auto child = ptree.get_child_optional(name);
     if (!child) {
-      return boost::none;
+      return std::make_exception_ptr(std::runtime_error(fmt::format("Can't find field '{}'", name)));
     }
 
-    return get_value_optional<T>(*child);
+    return get_value_outcome<T>(*child);
   }
 
 
 
   template <typename T, auto& field_default_value = no_default>
   static T get_value(const Properties& ptree, boost::optional<const std::string&> name = boost::none) {
-    const auto result = name ? get_value_optional<T>(ptree, *name) : get_value_optional<T>(ptree);
+    const auto result = name ? get_value_outcome<T>(ptree, *name) : get_value_outcome<T>(ptree);
 
     if (result) {
       return *result;
@@ -165,8 +173,11 @@ struct CVSConfig : public CVSConfigBase {
     if constexpr (std::is_same_v<std::remove_cvref_t<decltype(field_default_value)>, T>) {
       return field_default_value;
     }
+    else if (result.has_exception()) {
+      std::rethrow_exception(result.exception());
+    }
     else {
-      throw std::runtime_error(fmt::format("Can't convert field '{}' from string", name ? *name : "_empty_"));
+      throw std::runtime_error(result.error().message());
     }
   }
 
@@ -274,7 +285,7 @@ struct CVSConfig : public CVSConfigBase {
     [[nodiscard]] bool is_optional() const override { return true; }
 
     void set(Self& config, const Properties& ptree) override {
-      auto val = get_value_optional<T>(ptree, field_name_str::string());
+      auto val = get_value_outcome<T>(ptree, field_name_str::string());
       if (val)
         config.*pointer = std::move(*val);
     }
